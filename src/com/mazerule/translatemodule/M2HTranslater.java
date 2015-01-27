@@ -43,12 +43,7 @@ public class M2HTranslater {
 		}
 		
 		//判断出文本行的类型
-		//TEXTTYPE_NORMAL:各种类型
-		//TEXTYPE_SPACELINE:空白行
-		//TEXTTYPE_TITLELINE:====
-		//TEXTTYPE_SPLITLINE:-----
-		//TEXTTYPE_TWOSPACEENDTEXT:text+两个空白
-		//以后用正则式重写这块！
+		//
 		int judgeType(String content){
 			//用正则表达式判断文本行属于什么类型的
 			
