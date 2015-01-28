@@ -1,6 +1,8 @@
 package com.mazerule.translatemodule;
 
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.regex.Pattern;
 
 /*
@@ -35,6 +37,7 @@ public class M2HTranslater {
 	static final Pattern pattern_sbline_discontinuous=Pattern.compile("(\\s*-\\s*){3,}");
 	//static final Pattern pattern_endnormaltext=Pattern.compile("");
 	static final Pattern pattern_starline=Pattern.compile("(\\s*\\*\\s*){3,}");
+	
 	//行文本类
 	class LineText{
 		String content;	//文本内容
@@ -74,6 +77,36 @@ public class M2HTranslater {
 		}	
 	}
 	
+	/*
+	 * 元素的类型
+	 */
+	private final static int ELEMENTTYPE_TEXT=0;
+	private final static int ELEMENTTYPE_SPACE=0;
+	private final static int ELEMENTTYPE_OP_TAB=0;
+	private final static int ELEMENTTYPE_OP_STAR=0; 	//*
+	private final static int ELEMENTTYPE_OP_2STAR=0;	//**
+	private final static int ELEMENTTYPE_OP_SB=0; 		//_
+	private final static int ELEMENTTYPE_OP_2SB=0;		//__
+	private final static int ELEMENTTYPE_OP_JING=0;		//#
+	private final static int ELEMENTTYPE_OP_2JING=0;	//##
+	private final static int ELEMENTTYPE_OP_3JING=0;	//###
+	private final static int ELEMENTTYPE_OP_4JING=0;	//####
+	private final static int ELEMENTTYPE_OP_5JING=0;	//#####
+	private final static int ELEMENTTYPE_OP_6JING=0;	//######
+	private final static int ELEMENTTYPE_OP_ANGLE=0;	//>
+	//........
+	
+	
+	//在处理每一个行时，栈中每一格的元素类
+	class StackElement{
+		int type;	//他是属于操作符还是文本
+		String content;	//具体的内容
+		StackElement(int t,String c){
+			type=t;
+			content=c;
+		}
+	}
+	
 	//构造器
 	public M2HTranslater(String string){
 		if(string!=null){
@@ -105,7 +138,7 @@ public class M2HTranslater {
 			if(VDBG){
 				System.out.println("splitString(),string_arr.length()=="+string_arr.length);
 			}
-			//一行一行文本划分到了al_LineString里
+			//一行一行文本划分到了al_LineString里，同时判断出类型
 			for(int i=0;i<string_arr.length;i++){
 				if(DBG){
 					System.out.println("splitString!");
@@ -122,7 +155,34 @@ public class M2HTranslater {
 		String string_html="";	
 		//先把原始文本给切割了
 		if(splitString()){
-			//
+			//以行为单位对文本进行处理
+			//先对每一行添加html标签，然后再对段落加上<p>标签
+			
+			//直接用一个LinkedList作为栈
+			//push操作：addFirst()
+			//pop操作：removeFirst()
+			//peek操作：getFirst()
+			LinkedList<StackElement> magic_stack=new LinkedList<StackElement>();
+			Iterator<LineText> iterator=al_LineString.iterator();
+			if(VDBG){
+				System.out.println("遍历al_LineString:");
+			}
+			while(iterator.hasNext()){
+				LineText linetext=iterator.next();
+				if(VDBG){
+					System.out.println("next:"+linetext.content);
+				}
+				String textstring=linetext.content;	//获取了行文本的内容
+				int lineindex=0;
+				magic_stack.clear();
+				//从头至尾扫描字符
+				while(lineindex<textstring.length()){
+					char letter=textstring.charAt(lineindex);
+					//开始压栈
+					
+					lineindex++;
+				}
+			}
 		}
 		else{	//划分失败
 			return "";
