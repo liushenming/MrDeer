@@ -1,7 +1,7 @@
 package com.mazerule.translatemodule;
 
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.regex.Pattern;
 
 /*
  * Markdown文本到Html文本的转换器
@@ -26,12 +26,19 @@ public class M2HTranslater {
 	private final static int TEXTTYPE_SBLINE_CONTINUOUS=13;//---连续的 
 	private final static int TEXTTYPE_SBLINE_DISCONTINUOUS=14;	//- --，包含空格和-
 	private final static int TEXTTYPE_ENDNORMALTEXT=15;	//最后是两空格的普通文本类型
-	private final static int TEXTTYPE_STARLINE=16;	//** *，可以有空格
+	private final static int TEXTTYPE_STARLINE=16;	//** *，可以有空格\
 	
+	//用于内部类LineText判断文本类型用
+	static final Pattern pattern_spaceline=Pattern.compile("\\s*");
+	static final Pattern pattern_titleline=Pattern.compile("={3,}");
+	static final Pattern pattern_sbline_continuous=Pattern.compile("-{3}");
+	static final Pattern pattern_sbline_discontinuous=Pattern.compile("(\\s*-\\s*){3,}");
+	//static final Pattern pattern_endnormaltext=Pattern.compile("");
+	static final Pattern pattern_starline=Pattern.compile("(\\s*\\*\\s*){3,}");
 	//行文本类
 	class LineText{
 		String content;	//文本内容
-		int type;	//行文本的类型：
+		int type;	//行文本的类型
 		
 		//创建时只能传入文本内容。
 		LineText(String c){
@@ -46,8 +53,24 @@ public class M2HTranslater {
 		//
 		int judgeType(String content){
 			//用正则表达式判断文本行属于什么类型的
+			if(pattern_spaceline.matcher(content).matches()){
+				return TEXTYPE_SPACELINE;
+			}else if(pattern_titleline.matcher(content).matches()){
+				return TEXTTYPE_TITLELINE;
+			}else if(pattern_sbline_continuous.matcher(content).matches()){
+				return TEXTTYPE_SBLINE_CONTINUOUS;
+			}else if(pattern_sbline_discontinuous.matcher(content).matches()){
+				return TEXTTYPE_SBLINE_DISCONTINUOUS;
+			}else if(pattern_starline.matcher(content).matches()){
+				return TEXTTYPE_STARLINE;
+			}
 			
-			return 1;
+			//TEXTTYPE_ENDNORMALTEXT暂时用排除法判断
+			else if(content.length()>2&&content.charAt(content.length()-1)==' '
+					&&content.charAt(content.length()-2)==' '){
+				return TEXTTYPE_ENDNORMALTEXT;
+			}
+			return TEXTTYPE_NORMAL;
 		}	
 	}
 	
