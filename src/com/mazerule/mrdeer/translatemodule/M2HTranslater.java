@@ -207,6 +207,11 @@ public class M2HTranslater {
 				if(VDBG){
 					System.out.println("next:"+linetext.content);
 				}
+				//只有NORMAL和ENDNORMALTEXT类型的文本才可以进入stack进行处理
+				if(linetext.type!=TEXTTYPE_NORMAL
+						&&linetext.type!=TEXTTYPE_ENDNORMALTEXT){
+					continue;
+				}
 				String textstring=linetext.content;	//获取了行文本的内容
 				int lineindex=0;
 				magic_stack.clear();
@@ -225,8 +230,20 @@ public class M2HTranslater {
 								magic_stack.push(se_add);
 								break;
 							}
-							if(se_top.type!=ELEMENTTYPE_SPACE){
-								magic_stack.push(se_add);
+							if(se_top.type==ELEMENTTYPE_TEXT){
+								if(se_top.content.charAt(se_top.content.length()-1)
+										!=' '){
+									//添加上这一个空格
+									String newstring=se_top.content+" ";
+									magic_stack.pop();
+									se_add=new StackElement(ELEMENTTYPE_TEXT,newstring);
+									se_top=magic_stack.peek();
+									continue;
+								}else{
+									//无视着一个空格
+									break;
+								}
+							}else if(se_top.type==ELEMENTTYPE_SPACE){
 								break;
 							}
 						}
@@ -256,7 +273,7 @@ public class M2HTranslater {
 								se_add=new StackElement(ELEMENTTYPE_OP_2SB, "__");
 								se_top=magic_stack.peek();
 								continue;
-							}else if(se_top.type==ELEMENTTYPE_TEXT&&magic_stack.size()>2&&
+							}else if(se_top.type==ELEMENTTYPE_TEXT&&magic_stack.size()>=2&&
 									magic_stack.get(1).type==ELEMENTTYPE_OP_SB){
 								//<em>text</em>
 								magic_stack.pop();
@@ -276,7 +293,7 @@ public class M2HTranslater {
 								magic_stack.push(se_add);
 								break;
 							}
-							if(se_top.type==ELEMENTTYPE_TEXT&&magic_stack.size()>2&&
+							if(se_top.type==ELEMENTTYPE_TEXT&&magic_stack.size()>=2&&
 									magic_stack.get(1).type==ELEMENTTYPE_OP_2SB){
 								//<strong>text</strong>
 								magic_stack.pop();
@@ -300,7 +317,7 @@ public class M2HTranslater {
 								se_add=new StackElement(ELEMENTTYPE_OP_2STAR, "**");
 								se_top=magic_stack.peek();
 								continue;
-							}else if(se_top.type==ELEMENTTYPE_TEXT&&magic_stack.size()>2&&
+							}else if(se_top.type==ELEMENTTYPE_TEXT&&magic_stack.size()>=2&&
 									magic_stack.get(1).type==ELEMENTTYPE_OP_STAR){
 								magic_stack.pop();
 								magic_stack.pop();
@@ -308,6 +325,9 @@ public class M2HTranslater {
 								se_add=new StackElement(ELEMENTTYPE_TEXT,newtext);
 								se_top=magic_stack.peek();
 								continue;
+							}else{
+								magic_stack.push(se_add);
+								break;
 							}
 						}
 						//压'**'
@@ -316,7 +336,7 @@ public class M2HTranslater {
 								magic_stack.push(se_add);
 								break;
 							}
-							if(se_top.type==ELEMENTTYPE_TEXT&&magic_stack.size()>2&&
+							if(se_top.type==ELEMENTTYPE_TEXT&&magic_stack.size()>=2&&
 									magic_stack.get(1).type==ELEMENTTYPE_OP_2STAR){
 								//<strong>text</strong>
 								magic_stack.pop();
@@ -394,8 +414,15 @@ public class M2HTranslater {
 				}
 				//从magic_stack中将行字符串取出来
 				String stackstring="";	//从栈中取出的加工过一次的文本
-				ListIterator<StackElement> listiter=magic_stack.listIterator();
-				//while(listiter.hasPrevious())
+				ListIterator<StackElement> listiter=magic_stack.listIterator(
+						magic_stack.size());
+				while(listiter.hasPrevious()){
+					StackElement se_get=listiter.previous();
+					stackstring+=se_get.content;
+				}
+				if(VDBG){
+					System.out.println("stackstring:"+stackstring);
+				}
 				//再放置回al_LineString
 				linetext.content=stackstring;	//将文本替换成magic_stack中生加工过的
 			}
