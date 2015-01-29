@@ -208,303 +208,308 @@ public class M2HTranslater {
 					System.out.println("next:"+linetext.content);
 				}
 				//只有NORMAL和ENDNORMALTEXT类型的文本才可以进入stack进行处理
-				if(linetext.type!=TEXTTYPE_NORMAL
-						&&linetext.type!=TEXTTYPE_ENDNORMALTEXT){
-					continue;
-				}
-				String textstring=linetext.content;	//获取了行文本的内容
-				int lineindex=0;
-				magic_stack.clear();
-				//从头至尾扫描字符
-				//step1:依次压栈
-				//step2:最终把栈处理一下
-				while(lineindex<textstring.length()){
-					char letter=textstring.charAt(lineindex);
-					StackElement se_add=new StackElement(letter);
-					StackElement se_top=magic_stack.peek();	//栈顶元素
-					while(true){
-						//压空格栈元素
-						if(se_add.type==ELEMENTTYPE_SPACE){
-							if(se_top==null){
-								//直接无视文本行最前的空格
-								break;
+				if(linetext.type==TEXTTYPE_NORMAL
+						||linetext.type==TEXTTYPE_ENDNORMALTEXT){
+					String textstring=linetext.content;	//获取了行文本的内容
+					int lineindex=0;
+					magic_stack.clear();
+					//从头至尾扫描字符
+					//step1:依次压栈
+					//step2:最终把栈处理一下
+					while(lineindex<textstring.length()){
+						char letter=textstring.charAt(lineindex);
+						StackElement se_add=new StackElement(letter);
+						StackElement se_top=magic_stack.peek();	//栈顶元素
+						while(true){
+							//压空格栈元素
+							if(se_add.type==ELEMENTTYPE_SPACE){
+								if(se_top==null){
+									//直接无视文本行最前的空格
+									break;
+								}
+								if(se_top.type==ELEMENTTYPE_TEXT){
+									if(se_top.content.charAt(se_top.content.length()-1)
+											!=' '){
+										//添加上这一个空格
+										String newstring=se_top.content+" ";
+										magic_stack.pop();
+										se_add=new StackElement(ELEMENTTYPE_TEXT,newstring);
+										se_top=magic_stack.peek();
+										continue;
+									}else{
+										//行中多个空格合并成为一个，无视该一个空格
+										break;
+									}
+								}
 							}
-							if(se_top.type==ELEMENTTYPE_TEXT){
-								if(se_top.content.charAt(se_top.content.length()-1)
-										!=' '){
-									//添加上这一个空格
-									String newstring=se_top.content+" ";
+							//压正文
+							else if(se_add.type==ELEMENTTYPE_TEXT){
+								//栈顶也是TEXT类型
+								if(se_top!=null&&se_top.type==ELEMENTTYPE_TEXT){
 									magic_stack.pop();
-									se_add=new StackElement(ELEMENTTYPE_TEXT,newstring);
+									String newtext=se_top.content+se_add.content;
+									se_add=new StackElement(ELEMENTTYPE_TEXT,newtext);
 									se_top=magic_stack.peek();
 									continue;
 								}else{
-									//行中多个空格合并成为一个，无视该一个空格
-									break;
-								}
-							}
-						}
-						//压正文
-						else if(se_add.type==ELEMENTTYPE_TEXT){
-							//栈顶也是TEXT类型
-							if(se_top!=null&&se_top.type==ELEMENTTYPE_TEXT){
-								magic_stack.pop();
-								String newtext=se_top.content+se_add.content;
-								se_add=new StackElement(ELEMENTTYPE_TEXT,newtext);
-								se_top=magic_stack.peek();
-								continue;
-							}else{
-								//其他情况，直接压栈
-								magic_stack.push(se_add);
-								break;
-							}
-						}
-						//压'_'
-						else if(se_add.type==ELEMENTTYPE_OP_SB){
-							if(se_top==null){
-								magic_stack.push(se_add);
-								break;
-							}
-							if(se_top.type==ELEMENTTYPE_OP_SB){
-								magic_stack.pop();
-								se_add=new StackElement(ELEMENTTYPE_OP_2SB, "__");
-								se_top=magic_stack.peek();
-								continue;
-							}else if(se_top.type==ELEMENTTYPE_TEXT&&magic_stack.size()>=2&&
-									magic_stack.get(1).type==ELEMENTTYPE_OP_SB){
-								//<em>text</em>
-								magic_stack.pop();
-								magic_stack.pop();
-								String newtext="<em>"+se_top.content+"</em>";
-								se_add=new StackElement(ELEMENTTYPE_TEXT,newtext);
-								se_top=magic_stack.peek();
-								continue;
-							}else{
-								magic_stack.push(se_add);
-								break;
-							}
-						}
-						//压'__'
-						else if(se_add.type==ELEMENTTYPE_OP_2SB){
-							if(se_top==null){
-								magic_stack.push(se_add);
-								break;
-							}
-							if(se_top.type==ELEMENTTYPE_TEXT&&magic_stack.size()>=2&&
-									magic_stack.get(1).type==ELEMENTTYPE_OP_2SB){
-								//<strong>text</strong>
-								magic_stack.pop();
-								magic_stack.pop();
-								String newtext="<strong>"+se_top.content+"</strong>";
-								se_add=new StackElement(ELEMENTTYPE_TEXT,newtext);
-								se_top=magic_stack.peek();
-								continue;
-							}else{
-								magic_stack.add(se_add);
-							}
-						}
-						//压'*'
-						else if(se_add.type==ELEMENTTYPE_OP_STAR){
-							if(se_top==null){
-								magic_stack.push(se_add);
-								break;
-							}
-							if(se_top.type==ELEMENTTYPE_OP_STAR){
-								magic_stack.pop();
-								se_add=new StackElement(ELEMENTTYPE_OP_2STAR, "**");
-								se_top=magic_stack.peek();
-								continue;
-							}else if(se_top.type==ELEMENTTYPE_TEXT&&magic_stack.size()>=2&&
-									magic_stack.get(1).type==ELEMENTTYPE_OP_STAR){
-								magic_stack.pop();
-								magic_stack.pop();
-								String newtext="<em>"+se_top.content+"</em>";
-								se_add=new StackElement(ELEMENTTYPE_TEXT,newtext);
-								se_top=magic_stack.peek();
-								continue;
-							}else{
-								magic_stack.push(se_add);
-								break;
-							}
-						}
-						//压'**'
-						else if(se_add.type==ELEMENTTYPE_OP_2STAR){
-							if(se_top==null){
-								magic_stack.push(se_add);
-								break;
-							}
-							if(se_top.type==ELEMENTTYPE_TEXT&&magic_stack.size()>=2&&
-									magic_stack.get(1).type==ELEMENTTYPE_OP_2STAR){
-								//<strong>text</strong>
-								magic_stack.pop();
-								magic_stack.pop();
-								String newtext="<strong>"+se_top.content+"</strong>";
-								se_add=new StackElement(ELEMENTTYPE_TEXT,newtext);
-								se_top=magic_stack.peek();
-								continue;
-							}else{
-								magic_stack.add(se_add);
-							}
-						}
-						//压'#'
-						else if(se_add.type==ELEMENTTYPE_OP_JING){
-							//如果栈底是#序列或者#前只有空格，那么则起格式控制作用
-							//否则就直接变成文本类型
-							if(se_top==null){
-								//直接就是文本行最前的#
-								magic_stack.push(se_add);
-								break;
-							}
-							if(magic_stack.size()==1){
-								//当前栈中已经有了一个元素，#不放在最前就不是格式控制符
-								if(se_top.type==ELEMENTTYPE_OP_JING){
-									magic_stack.pop();
-									magic_stack.push(new StackElement(
-											ELEMENTTYPE_OP_2JING,"##"));
-									break;
-								}else if(se_top.type==ELEMENTTYPE_OP_2JING){
-									magic_stack.pop();
-									magic_stack.push(new StackElement(
-											ELEMENTTYPE_OP_3JING,"###"));
-									break;
-								}else if(se_top.type==ELEMENTTYPE_OP_3JING){
-									magic_stack.pop();
-									magic_stack.push(new StackElement(
-											ELEMENTTYPE_OP_4JING,"####"));
-									break;
-								}else if(se_top.type==ELEMENTTYPE_OP_4JING){
-									magic_stack.pop();
-									magic_stack.push(new StackElement(
-											ELEMENTTYPE_OP_5JING,"#####"));
-									break;
-								}else if(se_top.type==ELEMENTTYPE_OP_5JING){
-									magic_stack.pop();
-									magic_stack.push(new StackElement(
-											ELEMENTTYPE_OP_6JING,"######"));
-									break;
-								}else if(se_top.type==ELEMENTTYPE_OP_6JING){
-									magic_stack.push(new StackElement(
-											ELEMENTTYPE_TEXT,"#"));
-									break;
-								}else if(se_top.type==ELEMENTTYPE_TEXT){
-									magic_stack.pop();
-									//填至末尾
-									String newstring=se_top.content+="#";
-									se_add=new StackElement(ELEMENTTYPE_TEXT,newstring);
+									//其他情况，直接压栈
 									magic_stack.push(se_add);
 									break;
 								}
 							}
-							
+							//压'_'
+							else if(se_add.type==ELEMENTTYPE_OP_SB){
+								if(se_top==null){
+									magic_stack.push(se_add);
+									break;
+								}
+								if(se_top.type==ELEMENTTYPE_OP_SB){
+									magic_stack.pop();
+									se_add=new StackElement(ELEMENTTYPE_OP_2SB, "__");
+									se_top=magic_stack.peek();
+									continue;
+								}else if(se_top.type==ELEMENTTYPE_TEXT&&magic_stack.size()>=2&&
+										magic_stack.get(1).type==ELEMENTTYPE_OP_SB){
+									//<em>text</em>
+									magic_stack.pop();
+									magic_stack.pop();
+									String newtext="<em>"+se_top.content+"</em>";
+									se_add=new StackElement(ELEMENTTYPE_TEXT,newtext);
+									se_top=magic_stack.peek();
+									continue;
+								}else{
+									magic_stack.push(se_add);
+									break;
+								}
+							}
+							//压'__'
+							else if(se_add.type==ELEMENTTYPE_OP_2SB){
+								if(se_top==null){
+									magic_stack.push(se_add);
+									break;
+								}
+								if(se_top.type==ELEMENTTYPE_TEXT&&magic_stack.size()>=2&&
+										magic_stack.get(1).type==ELEMENTTYPE_OP_2SB){
+									//<strong>text</strong>
+									magic_stack.pop();
+									magic_stack.pop();
+									String newtext="<strong>"+se_top.content+"</strong>";
+									se_add=new StackElement(ELEMENTTYPE_TEXT,newtext);
+									se_top=magic_stack.peek();
+									continue;
+								}else{
+									magic_stack.add(se_add);
+								}
+							}
+							//压'*'
+							else if(se_add.type==ELEMENTTYPE_OP_STAR){
+								if(se_top==null){
+									magic_stack.push(se_add);
+									break;
+								}
+								if(se_top.type==ELEMENTTYPE_OP_STAR){
+									magic_stack.pop();
+									se_add=new StackElement(ELEMENTTYPE_OP_2STAR, "**");
+									se_top=magic_stack.peek();
+									continue;
+								}else if(se_top.type==ELEMENTTYPE_TEXT&&magic_stack.size()>=2&&
+										magic_stack.get(1).type==ELEMENTTYPE_OP_STAR){
+									magic_stack.pop();
+									magic_stack.pop();
+									String newtext="<em>"+se_top.content+"</em>";
+									se_add=new StackElement(ELEMENTTYPE_TEXT,newtext);
+									se_top=magic_stack.peek();
+									continue;
+								}else{
+									magic_stack.push(se_add);
+									break;
+								}
+							}
+							//压'**'
+							else if(se_add.type==ELEMENTTYPE_OP_2STAR){
+								if(se_top==null){
+									magic_stack.push(se_add);
+									break;
+								}
+								if(se_top.type==ELEMENTTYPE_TEXT&&magic_stack.size()>=2&&
+										magic_stack.get(1).type==ELEMENTTYPE_OP_2STAR){
+									//<strong>text</strong>
+									magic_stack.pop();
+									magic_stack.pop();
+									String newtext="<strong>"+se_top.content+"</strong>";
+									se_add=new StackElement(ELEMENTTYPE_TEXT,newtext);
+									se_top=magic_stack.peek();
+									continue;
+								}else{
+									magic_stack.add(se_add);
+								}
+							}
+							//压'#'
+							else if(se_add.type==ELEMENTTYPE_OP_JING){
+								//如果栈底是#序列或者#前只有空格，那么则起格式控制作用
+								//否则就直接变成文本类型
+								if(se_top==null){
+									//直接就是文本行最前的#
+									magic_stack.push(se_add);
+									break;
+								}
+								if(magic_stack.size()==1){
+									//当前栈中已经有了一个元素，#不放在最前就不是格式控制符
+									if(se_top.type==ELEMENTTYPE_OP_JING){
+										magic_stack.pop();
+										magic_stack.push(new StackElement(
+												ELEMENTTYPE_OP_2JING,"##"));
+										break;
+									}else if(se_top.type==ELEMENTTYPE_OP_2JING){
+										magic_stack.pop();
+										magic_stack.push(new StackElement(
+												ELEMENTTYPE_OP_3JING,"###"));
+										break;
+									}else if(se_top.type==ELEMENTTYPE_OP_3JING){
+										magic_stack.pop();
+										magic_stack.push(new StackElement(
+												ELEMENTTYPE_OP_4JING,"####"));
+										break;
+									}else if(se_top.type==ELEMENTTYPE_OP_4JING){
+										magic_stack.pop();
+										magic_stack.push(new StackElement(
+												ELEMENTTYPE_OP_5JING,"#####"));
+										break;
+									}else if(se_top.type==ELEMENTTYPE_OP_5JING){
+										magic_stack.pop();
+										magic_stack.push(new StackElement(
+												ELEMENTTYPE_OP_6JING,"######"));
+										break;
+									}else if(se_top.type==ELEMENTTYPE_OP_6JING){
+										magic_stack.push(new StackElement(
+												ELEMENTTYPE_TEXT,"#"));
+										break;
+									}else if(se_top.type==ELEMENTTYPE_TEXT){
+										magic_stack.pop();
+										//填至末尾
+										String newstring=se_top.content+="#";
+										se_add=new StackElement(ELEMENTTYPE_TEXT,newstring);
+										magic_stack.push(se_add);
+										break;
+									}
+								}
+								
+							}
+							//压'##'
+							else if(se_add.type==ELEMENTTYPE_OP_2JING){
+								
+							}
+							//压'###'
+							else if(se_add.type==ELEMENTTYPE_OP_3JING){
+								
+							}
+							//压'####'
+							else if(se_add.type==ELEMENTTYPE_OP_4JING){
+								
+							}
+							//压'#####'
+							else if(se_add.type==ELEMENTTYPE_OP_5JING){
+								
+							}
+							//压'######'
+							else if(se_add.type==ELEMENTTYPE_OP_6JING){
+								
+							}
 						}
-						//压'##'
-						else if(se_add.type==ELEMENTTYPE_OP_2JING){
-							
-						}
-						//压'###'
-						else if(se_add.type==ELEMENTTYPE_OP_3JING){
-							
-						}
-						//压'####'
-						else if(se_add.type==ELEMENTTYPE_OP_4JING){
-							
-						}
-						//压'#####'
-						else if(se_add.type==ELEMENTTYPE_OP_5JING){
-							
-						}
-						//压'######'
-						else if(se_add.type==ELEMENTTYPE_OP_6JING){
-							
-						}
+						
+						
+						lineindex++;
 					}
-					
-					
-					lineindex++;
-				}
-				//从magic_stack中将行字符串取出来
-				String stackstring="";	//从栈中取出的加工过一次的文本
-				String stackendstring="";	//例如</h1>这种结尾控制文本
-				//从栈底开始自底向上取出每个StackElement
-				ListIterator<StackElement> listiter=magic_stack.listIterator(
-						magic_stack.size());
-				boolean flag_isstackbottom=true;	//标志是否是栈底
-				while(listiter.hasPrevious()){
-					StackElement se_get=listiter.previous();
-					String content_get=se_get.content;	//文本内容
-					int type_get=se_get.type;
-					//是空白元素，那必然处于文本开头，去掉
-					if(type_get==ELEMENTTYPE_SPACE||type_get==ELEMENTTYPE_OP_2STAR||
-							type_get==ELEMENTTYPE_OP_2SB){
-						continue;
+					//从magic_stack中将行字符串取出来
+					String stackstring="";	//从栈中取出的加工过一次的文本
+					String stackendstring="";	//例如</h1>这种结尾控制文本
+					//从栈底开始自底向上取出每个StackElement
+					ListIterator<StackElement> listiter=magic_stack.listIterator(
+							magic_stack.size());
+					boolean flag_isstackbottom=true;	//标志是否是栈底
+					while(listiter.hasPrevious()){
+						StackElement se_get=listiter.previous();
+						String content_get=se_get.content;	//文本内容
+						int type_get=se_get.type;
+						//是空白元素，那必然处于文本开头，去掉
+						if(type_get==ELEMENTTYPE_SPACE||type_get==ELEMENTTYPE_OP_2STAR||
+								type_get==ELEMENTTYPE_OP_2SB){
+							continue;
+						}
+						//关于井号的处理需要注意一个问题
+						//例如文本：#####回车
+						//则需要转换成<h4>#</h4>
+						//如果###后有文本，则无需减1
+						else if(type_get==ELEMENTTYPE_OP_JING){
+							//文本行就一个#
+							if(magic_stack.size()==1){
+								stackstring="#";
+							}else{
+								stackstring+="<h1>";
+								stackendstring="</h1>"+stackendstring;
+							}
+						}else if(type_get==ELEMENTTYPE_OP_2JING){
+							//文本行就一个##
+							if(magic_stack.size()==1){
+								stackstring="<h1>#</h1>";
+							}else{
+								stackstring+="<h2>";
+								stackendstring="</h2>"+stackendstring;
+							}
+						}else if(type_get==ELEMENTTYPE_OP_3JING){
+							if(magic_stack.size()==1){
+								stackstring="<h2>#</h2>";
+							}else{
+								stackstring+="<h3>";
+								stackendstring="</h3>"+stackendstring;
+							}
+						}else if(type_get==ELEMENTTYPE_OP_4JING){
+							if(magic_stack.size()==1){
+								stackstring="<h3>#</h3>";
+							}else{
+								stackstring+="<h4>";
+								stackendstring="</h4>"+stackendstring;
+							}
+						}else if(type_get==ELEMENTTYPE_OP_5JING){
+							if(magic_stack.size()==1){
+								stackstring="<h4>#</h4>";
+							}else{
+								stackstring+="<h5>";
+								stackendstring="</h5>"+stackendstring;
+							}
+						}else if(type_get==ELEMENTTYPE_OP_6JING){
+							if(magic_stack.size()==1){
+								stackstring="<h5>#</h5>";
+							}else{
+								stackstring+="<h6>";
+								stackendstring="</h6>"+stackendstring;
+							}
+						}else if(type_get==ELEMENTTYPE_TEXT){
+							stackstring+=content_get;
+						}
+						flag_isstackbottom=false;	//栈底已经处理过了，下一个元素不是栈底
 					}
-					//关于井号的处理需要注意一个问题
-					//例如文本：#####回车
-					//则需要转换成<h4>#</h4>
-					//如果###后有文本，则无需减1
-					else if(type_get==ELEMENTTYPE_OP_JING){
-						//文本行就一个#
-						if(magic_stack.size()==1){
-							stackstring="#";
-						}else{
-							stackstring+="<h1>";
-							stackendstring="</h1>"+stackendstring;
-						}
-					}else if(type_get==ELEMENTTYPE_OP_2JING){
-						//文本行就一个##
-						if(magic_stack.size()==1){
-							stackstring="<h1>#</h1>";
-						}else{
-							stackstring+="<h2>";
-							stackendstring="</h2>"+stackendstring;
-						}
-					}else if(type_get==ELEMENTTYPE_OP_3JING){
-						if(magic_stack.size()==1){
-							stackstring="<h2>#</h2>";
-						}else{
-							stackstring+="<h3>";
-							stackendstring="</h3>"+stackendstring;
-						}
-					}else if(type_get==ELEMENTTYPE_OP_4JING){
-						if(magic_stack.size()==1){
-							stackstring="<h3>#</h3>";
-						}else{
-							stackstring+="<h4>";
-							stackendstring="</h4>"+stackendstring;
-						}
-					}else if(type_get==ELEMENTTYPE_OP_5JING){
-						if(magic_stack.size()==1){
-							stackstring="<h4>#</h4>";
-						}else{
-							stackstring+="<h5>";
-							stackendstring="</h5>"+stackendstring;
-						}
-					}else if(type_get==ELEMENTTYPE_OP_6JING){
-						if(magic_stack.size()==1){
-							stackstring="<h5>#</h5>";
-						}else{
-							stackstring+="<h6>";
-							stackendstring="</h6>"+stackendstring;
-						}
-					}else if(type_get==ELEMENTTYPE_TEXT){
-						stackstring+=content_get;
+					stackstring+=stackendstring;	//拼接上</..></..>
+					if(VDBG){
+						System.out.println("stackstring:"+stackstring);
 					}
-					flag_isstackbottom=false;	//栈底已经处理过了，下一个元素不是栈底
-				}
-				stackstring+=stackendstring;	//拼接上</..></..>
-				if(VDBG){
-					System.out.println("stackstring:"+stackstring);
-				}
-				//再放置回al_LineString
-				linetext.content=stackstring;	//将文本替换成magic_stack中生加工过的
-				stackstring="";
-				stackstring="";
+					//再放置回al_LineString
+					linetext.content=stackstring;	//将文本替换成magic_stack中生加工过的
+				}else if(linetext.type==TEXTTYPE_SBLINE_DISCONTINUOUS){
+					linetext.content="<hr>";
+				}		
 			}
 		}
 		else{	//划分失败
 			return "ERROR";
 		}
-		return string_html;
+		Iterator<LineText> iter=al_LineString.iterator();
+		StringBuilder html_stringbuilder=new StringBuilder();
+		while(iter.hasNext()){
+			LineText lt_get=iter.next();
+			html_stringbuilder.append(lt_get.content+"\n");
+		}
+		return html_stringbuilder.toString();
 	}
 	
 	//为转换器重新加载一个要转换的html String

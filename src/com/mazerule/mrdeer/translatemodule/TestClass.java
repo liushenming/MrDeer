@@ -11,13 +11,13 @@ import java.io.IOException;
  */
 public class TestClass {
 
-	static boolean DBG=false;	//用于一些输出一些log
+	static boolean DBG=true;	//用于一些输出一些log
 	static boolean VDBG=false;	//用于一些输出一些细节的log
 	static boolean VVDBG=false;	//用于一些输出一些非常细节的log
 	
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		String filename="E:\\MDFiles\\html1.txt";
+		String filename="E:\\MDFiles\\xueguo.txt";
 		try {
 			BufferedReader br=new BufferedReader(new FileReader(filename));
 			StringBuilder sb=new StringBuilder();
@@ -34,9 +34,9 @@ public class TestClass {
 			M2HTranslater translater=new M2HTranslater(sb.toString());
 			String string_html=translater.translate();
 			
-			if(DBG)
+			if(VDBG)
 			{
-				
+				System.out.println("main(),string_html:\n"+string_html);
 			}
 			
 		} catch (FileNotFoundException e) {
