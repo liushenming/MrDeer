@@ -1,23 +1,19 @@
 package com.mazerule.mrdeer.translatemodule;
 
-import java.util.LinkedList;
-import java.util.ListIterator;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class EasyTest {
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		LinkedList<String> ll=new LinkedList<String>();
-		ll.add("ab");
-		ll.add("cd");
-		ll.add("ef");
-		ll.add("gh");
-		System.out.println(ll);
-		
-		ListIterator<String> li=ll.listIterator(ll.size());
-		while(li.hasPrevious())
-		{
-			System.out.println(li.previous());
+		Pattern pattern=Pattern.compile("[#]{2,}.*");
+		String s="####  Ñ©    ¹ú";
+		Matcher m=pattern.matcher(s);
+		if(m.matches()){
+			System.out.println("success");
+		}else{
+			System.out.println("fail");
 		}
 	}
 

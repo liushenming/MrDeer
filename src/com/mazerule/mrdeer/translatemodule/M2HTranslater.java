@@ -26,14 +26,16 @@ public class M2HTranslater {
 	private final static int TEXTTYPE_NORMAL=10;  //普通文本类型
 	private final static int TEXTYPE_SPACELINE=11;	//空白的文本类型
 	private final static int TEXTTYPE_TITLELINE=12;	//=====
-	private final static int TEXTTYPE_SBLINE_CONTINUOUS=13;//---连续的 
-	private final static int TEXTTYPE_SBLINE_DISCONTINUOUS=14;	//- --，包含空格和-
-	private final static int TEXTTYPE_ENDNORMALTEXT=15;	//最后是两空格的普通文本类型
-	private final static int TEXTTYPE_STARLINE=16;	//** *，可以有空格\
+	private final static int TEXTTYPE_TITLE=13;	//标题，标题类似于独立的段
+	private final static int TEXTTYPE_SBLINE_CONTINUOUS=14;//---连续的 
+	private final static int TEXTTYPE_SBLINE_DISCONTINUOUS=15;	//- --，包含空格和-
+	private final static int TEXTTYPE_ENDNORMALTEXT=16;	//最后是两空格的普通文本类型
+	private final static int TEXTTYPE_STARLINE=17;	//** *，可以有空格\
 	
 	//用于内部类LineText判断文本类型用
 	static final Pattern pattern_spaceline=Pattern.compile("\\s*");
 	static final Pattern pattern_titleline=Pattern.compile("={3,}");
+	static final Pattern pattern_title=Pattern.compile("[#]{2,}.*");
 	static final Pattern pattern_sbline_continuous=Pattern.compile("-{3}");
 	static final Pattern pattern_sbline_discontinuous=Pattern.compile("(\\s*-\\s*){3,}");
 	//static final Pattern pattern_endnormaltext=Pattern.compile("");
@@ -67,6 +69,8 @@ public class M2HTranslater {
 				return TEXTTYPE_SBLINE_DISCONTINUOUS;
 			}else if(pattern_starline.matcher(content).matches()){
 				return TEXTTYPE_STARLINE;
+			}else if(pattern_title.matcher(content).matches()){
+				return TEXTTYPE_TITLE;
 			}
 			
 			//TEXTTYPE_ENDNORMALTEXT暂时用排除法判断
@@ -173,12 +177,77 @@ public class M2HTranslater {
 			if(VDBG){
 				System.out.println("splitString(),string_arr.length()=="+string_arr.length);
 			}
+			//第一次扫描
 			//一行一行文本划分到了al_LineString里，同时判断出类型
 			for(int i=0;i<string_arr.length;i++){
-				if(DBG){
+				if(VVDBG){
 					System.out.println("splitString!");
 				}
 				al_LineString.add(new LineText(string_arr[i]));
+			}
+			//此时已经初步按照\n将整个大段文本分开，并且标记了类型。
+			//需要进一步整合行文本，使其以段落为行文本的单位
+			//第二次扫描,去除多余的空白行，将TEXTTYPE_TITLELINE的行删掉
+			for(int i=0;i<al_LineString.size();i++){
+				LineText lt_curr=al_LineString.get(i);	//当前的LineText
+				LineText lt_next=null;	//下一个text
+				if(i+1<al_LineString.size()){
+					lt_next=al_LineString.get(i+1);
+				}
+				//如果当前文本行是一个普通文本/换行文本，并且下一个文本行是====或者是-----
+				if(lt_next!=null&&(lt_curr.type==TEXTTYPE_NORMAL
+						||lt_curr.type==TEXTTYPE_ENDNORMALTEXT)&&
+						(lt_next.type==TEXTTYPE_TITLELINE||
+						lt_next.type==TEXTTYPE_SBLINE_CONTINUOUS)){
+					//将当前文本的type改成TEXTTYPE_TITLE
+					lt_curr.type=TEXTTYPE_TITLE;
+					//===/----这种TEXTTYPE_TITLELINE文本行已经失去他们的价值，删掉
+					al_LineString.remove(i+1);
+					continue;
+				}
+				//当前行，下一行都是空白行
+				if(lt_next!=null&&lt_curr.type==TEXTYPE_SPACELINE&&
+						lt_next.type==TEXTYPE_SPACELINE){
+					//删掉下面一行
+					al_LineString.remove(i+1);
+					//退回一格，下次循环仍要从本空白行开始
+					i--;
+					continue;
+				}
+			}
+			//第三次扫描，将同一个段落的文本合并成一行
+			for(int i=0;i<al_LineString.size();i++){
+				LineText lt_curr=al_LineString.get(i);	//当前的LineText
+				LineText lt_next=null;	//下一个text
+				if(i+1<al_LineString.size()){
+					lt_next=al_LineString.get(i+1);
+				}
+				//当前是普通文本，下一行是也是普通文本/TEXTTYPE_ENDNORMALTEXT
+				if(lt_next!=null&&lt_curr.type==TEXTTYPE_NORMAL&&
+						(lt_next.type==TEXTTYPE_NORMAL||
+						lt_next.type==TEXTTYPE_ENDNORMALTEXT)){
+					//合并两个文本到当前的LineText,删除next
+					lt_curr.content+=lt_next.content;
+					lt_curr.type=lt_next.type;
+					al_LineString.remove(i+1);
+					i--;
+					continue;
+				}
+				//当前是TEXTTYPE_ENDNORMALTEXT，下一行是也是普通文本/TEXTTYPE_ENDNORMALTEXT
+				if(lt_next!=null&&lt_curr.type==TEXTTYPE_ENDNORMALTEXT&&
+						(lt_next.type==TEXTTYPE_NORMAL||
+						lt_next.type==TEXTTYPE_ENDNORMALTEXT)){
+					//合并两个文本到当前的LineText,以\n间隔,删除next
+					lt_curr.content+="\n"+lt_next.content;
+					lt_curr.type=lt_next.type;
+					al_LineString.remove(i+1);
+					i--;
+					continue;
+				}
+			}
+			if(VDBG){
+				System.out.println("the al_LineString:");
+				printLineStrings();
 			}
 			return true;
 		}
@@ -203,13 +272,14 @@ public class M2HTranslater {
 				System.out.println("遍历al_LineString:");
 			}
 			while(iterator.hasNext()){
-				LineText linetext=iterator.next();
+				LineText linetext=iterator.next();	//遍历到的文本行
 				if(VDBG){
 					System.out.println("next:"+linetext.content);
 				}
-				//只有NORMAL和ENDNORMALTEXT类型的文本才可以进入stack进行处理
-				if(linetext.type==TEXTTYPE_NORMAL
-						||linetext.type==TEXTTYPE_ENDNORMALTEXT){
+				//只有NORMAL/ENDNORMALTEXT/TITLE类型的文本才可以进入stack进行处理
+				if(linetext.type==TEXTTYPE_NORMAL||
+						linetext.type==TEXTTYPE_ENDNORMALTEXT||
+						linetext.type==TEXTTYPE_TITLE){
 					String textstring=linetext.content;	//获取了行文本的内容
 					int lineindex=0;
 					magic_stack.clear();
@@ -445,7 +515,7 @@ public class M2HTranslater {
 							if(magic_stack.size()==1){
 								stackstring="#";
 							}else{
-								stackstring+="<h1>";
+								stackstring="<h1>"+stackstring;
 								stackendstring="</h1>"+stackendstring;
 							}
 						}else if(type_get==ELEMENTTYPE_OP_2JING){
@@ -453,35 +523,35 @@ public class M2HTranslater {
 							if(magic_stack.size()==1){
 								stackstring="<h1>#</h1>";
 							}else{
-								stackstring+="<h2>";
+								stackstring="<h2>"+stackstring;
 								stackendstring="</h2>"+stackendstring;
 							}
 						}else if(type_get==ELEMENTTYPE_OP_3JING){
 							if(magic_stack.size()==1){
 								stackstring="<h2>#</h2>";
 							}else{
-								stackstring+="<h3>";
+								stackstring="<h3>"+stackstring;
 								stackendstring="</h3>"+stackendstring;
 							}
 						}else if(type_get==ELEMENTTYPE_OP_4JING){
 							if(magic_stack.size()==1){
 								stackstring="<h3>#</h3>";
 							}else{
-								stackstring+="<h4>";
+								stackstring="<h4>"+stackstring;
 								stackendstring="</h4>"+stackendstring;
 							}
 						}else if(type_get==ELEMENTTYPE_OP_5JING){
 							if(magic_stack.size()==1){
 								stackstring="<h4>#</h4>";
 							}else{
-								stackstring+="<h5>";
+								stackstring="<h5>"+stackstring;
 								stackendstring="</h5>"+stackendstring;
 							}
 						}else if(type_get==ELEMENTTYPE_OP_6JING){
 							if(magic_stack.size()==1){
 								stackstring="<h5>#</h5>";
 							}else{
-								stackstring+="<h6>";
+								stackstring="<h6>"+stackstring;
 								stackendstring="</h6>"+stackendstring;
 							}
 						}else if(type_get==ELEMENTTYPE_TEXT){
@@ -489,15 +559,28 @@ public class M2HTranslater {
 						}
 						flag_isstackbottom=false;	//栈底已经处理过了，下一个元素不是栈底
 					}
-					stackstring+=stackendstring;	//拼接上</..></..>
+					stackstring=stackstring+stackendstring;	//拼接上</..></..>
+					if(linetext.type==TEXTTYPE_NORMAL){
+						stackstring="<p>"+stackstring+"</p>";
+					}else if(linetext.type==TEXTTYPE_ENDNORMALTEXT){
+						stackstring="<p>"+stackstring+"<br/></p>";
+					}
+					
 					if(VDBG){
 						System.out.println("stackstring:"+stackstring);
 					}
 					//再放置回al_LineString
 					linetext.content=stackstring;	//将文本替换成magic_stack中生加工过的
-				}else if(linetext.type==TEXTTYPE_SBLINE_DISCONTINUOUS){
+					
+				}
+				//如果当前文本行是- - -- --
+				else if(linetext.type==TEXTTYPE_SBLINE_DISCONTINUOUS){
 					linetext.content="<hr>";
-				}		
+				}
+				//当前文本时标题
+				else if(linetext.type==TEXTTYPE_TITLE){
+					
+				}
 			}
 		}
 		else{	//划分失败
@@ -519,6 +602,17 @@ public class M2HTranslater {
 		}
 		else{
 			this.origin_string=new String(string);
+		}
+	}
+	
+	//打印出每一行的文本内容和文本类型
+	private void printLineStrings(){
+		if(this.al_LineString!=null){
+			Iterator<LineText> iter=al_LineString.iterator();
+			while(iter.hasNext()){
+				LineText lt=iter.next();
+				System.out.println("type:"+lt.type+"\ncontent:"+lt.content);
+			}
 		}
 	}
 }
