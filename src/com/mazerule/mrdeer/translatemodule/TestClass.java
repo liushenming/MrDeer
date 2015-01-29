@@ -11,13 +11,13 @@ import java.io.IOException;
  */
 public class TestClass {
 
-	static boolean DBG=true;	//用于一些输出一些log
+	static boolean DBG=false;	//用于一些输出一些log
 	static boolean VDBG=true;	//用于一些输出一些细节的log
 	static boolean VVDBG=false;	//用于一些输出一些非常细节的log
 	
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		String filename="E:\\MDFiles\\xueguo.txt";
+		String filename="E:\\MDFiles\\html1.txt";
 		try {
 			BufferedReader br=new BufferedReader(new FileReader(filename));
 			StringBuilder sb=new StringBuilder();
@@ -26,8 +26,8 @@ public class TestClass {
 			while((string_get=br.readLine())!=null){
 				sb.append(string_get+"\n");
 			}
-			if(DBG){
-				System.out.println("main(),sb=="+sb.toString());
+			if(VDBG){
+				System.out.println("main(),sb:\n"+sb.toString());
 			}
 			//此时markdown原始文本内容已经在string_get中了
 			//进行解析

@@ -16,8 +16,8 @@ public class M2HTranslater {
 	
 	//<行号,行字符串>
 	private ArrayList<LineText> al_LineString;	//行文本
-	public boolean DBG=true;
-	public boolean VDBG=true;
+	public boolean DBG=false;
+	public boolean VDBG=false;
 	public boolean VVDBG=false;
 	
 	/*
@@ -26,16 +26,17 @@ public class M2HTranslater {
 	private final static int TEXTTYPE_NORMAL=10;  //普通文本类型
 	private final static int TEXTYPE_SPACELINE=11;	//空白的文本类型
 	private final static int TEXTTYPE_TITLELINE=12;	//=====
-	private final static int TEXTTYPE_TITLE=13;	//标题，标题类似于独立的段
-	private final static int TEXTTYPE_SBLINE_CONTINUOUS=14;//---连续的 
-	private final static int TEXTTYPE_SBLINE_DISCONTINUOUS=15;	//- --，包含空格和-
-	private final static int TEXTTYPE_ENDNORMALTEXT=16;	//最后是两空格的普通文本类型
-	private final static int TEXTTYPE_STARLINE=17;	//** *，可以有空格\
+	private final static int TEXTTYPE_TITLE_JING=13;	//标题，标题类似于独立的段(##)
+	private final static int TEXTTYPE_TITLE_EQUAL=14;	//标题，标题类似于独立的段(==)
+	private final static int TEXTTYPE_SBLINE_CONTINUOUS=15;//---连续的 
+	private final static int TEXTTYPE_SBLINE_DISCONTINUOUS=16;	//- --，包含空格和-
+	private final static int TEXTTYPE_ENDNORMALTEXT=17;	//最后是两空格的普通文本类型
+	private final static int TEXTTYPE_STARLINE=18;	//** *，可以有空格\
 	
 	//用于内部类LineText判断文本类型用
 	static final Pattern pattern_spaceline=Pattern.compile("\\s*");
 	static final Pattern pattern_titleline=Pattern.compile("={3,}");
-	static final Pattern pattern_title=Pattern.compile("[#]{2,}.*");
+	static final Pattern pattern_title_jing=Pattern.compile("[#]{2,}.*");
 	static final Pattern pattern_sbline_continuous=Pattern.compile("-{3}");
 	static final Pattern pattern_sbline_discontinuous=Pattern.compile("(\\s*-\\s*){3,}");
 	//static final Pattern pattern_endnormaltext=Pattern.compile("");
@@ -69,8 +70,8 @@ public class M2HTranslater {
 				return TEXTTYPE_SBLINE_DISCONTINUOUS;
 			}else if(pattern_starline.matcher(content).matches()){
 				return TEXTTYPE_STARLINE;
-			}else if(pattern_title.matcher(content).matches()){
-				return TEXTTYPE_TITLE;
+			}else if(pattern_title_jing.matcher(content).matches()){
+				return TEXTTYPE_TITLE_JING;
 			}
 			
 			//TEXTTYPE_ENDNORMALTEXT暂时用排除法判断
@@ -200,7 +201,7 @@ public class M2HTranslater {
 						(lt_next.type==TEXTTYPE_TITLELINE||
 						lt_next.type==TEXTTYPE_SBLINE_CONTINUOUS)){
 					//将当前文本的type改成TEXTTYPE_TITLE
-					lt_curr.type=TEXTTYPE_TITLE;
+					lt_curr.type=TEXTTYPE_TITLE_EQUAL;
 					//===/----这种TEXTTYPE_TITLELINE文本行已经失去他们的价值，删掉
 					al_LineString.remove(i+1);
 					continue;
@@ -279,7 +280,8 @@ public class M2HTranslater {
 				//只有NORMAL/ENDNORMALTEXT/TITLE类型的文本才可以进入stack进行处理
 				if(linetext.type==TEXTTYPE_NORMAL||
 						linetext.type==TEXTTYPE_ENDNORMALTEXT||
-						linetext.type==TEXTTYPE_TITLE){
+						linetext.type==TEXTTYPE_TITLE_JING||
+						linetext.type==TEXTTYPE_TITLE_EQUAL){
 					String textstring=linetext.content;	//获取了行文本的内容
 					int lineindex=0;
 					magic_stack.clear();
@@ -564,6 +566,8 @@ public class M2HTranslater {
 						stackstring="<p>"+stackstring+"</p>";
 					}else if(linetext.type==TEXTTYPE_ENDNORMALTEXT){
 						stackstring="<p>"+stackstring+"<br/></p>";
+					}else if(linetext.type==TEXTTYPE_TITLE_EQUAL){
+						stackstring="<h1>"+stackstring+"</h1>";
 					}
 					
 					if(VDBG){
@@ -574,12 +578,9 @@ public class M2HTranslater {
 					
 				}
 				//如果当前文本行是- - -- --
-				else if(linetext.type==TEXTTYPE_SBLINE_DISCONTINUOUS){
+				else if(linetext.type==TEXTTYPE_SBLINE_DISCONTINUOUS||
+						linetext.type==TEXTTYPE_STARLINE){
 					linetext.content="<hr>";
-				}
-				//当前文本时标题
-				else if(linetext.type==TEXTTYPE_TITLE){
-					
 				}
 			}
 		}
