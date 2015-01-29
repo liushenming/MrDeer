@@ -226,8 +226,7 @@ public class M2HTranslater {
 						//压空格栈元素
 						if(se_add.type==ELEMENTTYPE_SPACE){
 							if(se_top==null){
-								//还没有元素，直接压栈
-								magic_stack.push(se_add);
+								//直接无视文本行最前的空格
 								break;
 							}
 							if(se_top.type==ELEMENTTYPE_TEXT){
@@ -240,11 +239,9 @@ public class M2HTranslater {
 									se_top=magic_stack.peek();
 									continue;
 								}else{
-									//无视着一个空格
+									//行中多个空格合并成为一个，无视该一个空格
 									break;
 								}
-							}else if(se_top.type==ELEMENTTYPE_SPACE){
-								break;
 							}
 						}
 						//压正文
@@ -351,41 +348,54 @@ public class M2HTranslater {
 						}
 						//压'#'
 						else if(se_add.type==ELEMENTTYPE_OP_JING){
+							//如果栈底是#序列或者#前只有空格，那么则起格式控制作用
+							//否则就直接变成文本类型
 							if(se_top==null){
+								//直接就是文本行最前的#
 								magic_stack.push(se_add);
 								break;
 							}
-							if(se_top.type==ELEMENTTYPE_OP_JING){
-								magic_stack.pop();
-								magic_stack.push(new StackElement(
-										ELEMENTTYPE_OP_2JING,"##"));
-								break;
-							}else if(se_top.type==ELEMENTTYPE_OP_2JING){
-								magic_stack.pop();
-								magic_stack.push(new StackElement(
-										ELEMENTTYPE_OP_3JING,"###"));
-								break;
-							}else if(se_top.type==ELEMENTTYPE_OP_3JING){
-								magic_stack.pop();
-								magic_stack.push(new StackElement(
-										ELEMENTTYPE_OP_4JING,"####"));
-								break;
-							}else if(se_top.type==ELEMENTTYPE_OP_4JING){
-								magic_stack.pop();
-								magic_stack.push(new StackElement(
-										ELEMENTTYPE_OP_5JING,"#####"));
-								break;
-							}else if(se_top.type==ELEMENTTYPE_OP_5JING){
-								magic_stack.pop();
-								magic_stack.push(new StackElement(
-										ELEMENTTYPE_OP_6JING,"######"));
-								break;
-							}else if(se_top.type==ELEMENTTYPE_OP_6JING){
-								magic_stack.pop();
-								magic_stack.push(new StackElement(
-										ELEMENTTYPE_TEXT,"#"));
-								break;
+							if(magic_stack.size()==1){
+								//当前栈中已经有了一个元素，#不放在最前就不是格式控制符
+								if(se_top.type==ELEMENTTYPE_OP_JING){
+									magic_stack.pop();
+									magic_stack.push(new StackElement(
+											ELEMENTTYPE_OP_2JING,"##"));
+									break;
+								}else if(se_top.type==ELEMENTTYPE_OP_2JING){
+									magic_stack.pop();
+									magic_stack.push(new StackElement(
+											ELEMENTTYPE_OP_3JING,"###"));
+									break;
+								}else if(se_top.type==ELEMENTTYPE_OP_3JING){
+									magic_stack.pop();
+									magic_stack.push(new StackElement(
+											ELEMENTTYPE_OP_4JING,"####"));
+									break;
+								}else if(se_top.type==ELEMENTTYPE_OP_4JING){
+									magic_stack.pop();
+									magic_stack.push(new StackElement(
+											ELEMENTTYPE_OP_5JING,"#####"));
+									break;
+								}else if(se_top.type==ELEMENTTYPE_OP_5JING){
+									magic_stack.pop();
+									magic_stack.push(new StackElement(
+											ELEMENTTYPE_OP_6JING,"######"));
+									break;
+								}else if(se_top.type==ELEMENTTYPE_OP_6JING){
+									magic_stack.push(new StackElement(
+											ELEMENTTYPE_TEXT,"#"));
+									break;
+								}else if(se_top.type==ELEMENTTYPE_TEXT){
+									magic_stack.pop();
+									//填至末尾
+									String newstring=se_top.content+="#";
+									se_add=new StackElement(ELEMENTTYPE_TEXT,newstring);
+									magic_stack.push(se_add);
+									break;
+								}
 							}
+							
 						}
 						//压'##'
 						else if(se_add.type==ELEMENTTYPE_OP_2JING){
@@ -414,17 +424,81 @@ public class M2HTranslater {
 				}
 				//从magic_stack中将行字符串取出来
 				String stackstring="";	//从栈中取出的加工过一次的文本
+				String stackendstring="";	//例如</h1>这种结尾控制文本
+				//从栈底开始自底向上取出每个StackElement
 				ListIterator<StackElement> listiter=magic_stack.listIterator(
 						magic_stack.size());
+				boolean flag_isstackbottom=true;	//标志是否是栈底
 				while(listiter.hasPrevious()){
 					StackElement se_get=listiter.previous();
-					stackstring+=se_get.content;
+					String content_get=se_get.content;	//文本内容
+					int type_get=se_get.type;
+					//是空白元素，那必然处于文本开头，去掉
+					if(type_get==ELEMENTTYPE_SPACE||type_get==ELEMENTTYPE_OP_2STAR||
+							type_get==ELEMENTTYPE_OP_2SB){
+						continue;
+					}
+					//关于井号的处理需要注意一个问题
+					//例如文本：#####回车
+					//则需要转换成<h4>#</h4>
+					//如果###后有文本，则无需减1
+					else if(type_get==ELEMENTTYPE_OP_JING){
+						//文本行就一个#
+						if(magic_stack.size()==1){
+							stackstring="#";
+						}else{
+							stackstring+="<h1>";
+							stackendstring="</h1>"+stackendstring;
+						}
+					}else if(type_get==ELEMENTTYPE_OP_2JING){
+						//文本行就一个##
+						if(magic_stack.size()==1){
+							stackstring="<h1>#</h1>";
+						}else{
+							stackstring+="<h2>";
+							stackendstring="</h2>"+stackendstring;
+						}
+					}else if(type_get==ELEMENTTYPE_OP_3JING){
+						if(magic_stack.size()==1){
+							stackstring="<h2>#</h2>";
+						}else{
+							stackstring+="<h3>";
+							stackendstring="</h3>"+stackendstring;
+						}
+					}else if(type_get==ELEMENTTYPE_OP_4JING){
+						if(magic_stack.size()==1){
+							stackstring="<h3>#</h3>";
+						}else{
+							stackstring+="<h4>";
+							stackendstring="</h4>"+stackendstring;
+						}
+					}else if(type_get==ELEMENTTYPE_OP_5JING){
+						if(magic_stack.size()==1){
+							stackstring="<h4>#</h4>";
+						}else{
+							stackstring+="<h5>";
+							stackendstring="</h5>"+stackendstring;
+						}
+					}else if(type_get==ELEMENTTYPE_OP_6JING){
+						if(magic_stack.size()==1){
+							stackstring="<h5>#</h5>";
+						}else{
+							stackstring+="<h6>";
+							stackendstring="</h6>"+stackendstring;
+						}
+					}else if(type_get==ELEMENTTYPE_TEXT){
+						stackstring+=content_get;
+					}
+					flag_isstackbottom=false;	//栈底已经处理过了，下一个元素不是栈底
 				}
+				stackstring+=stackendstring;	//拼接上</..></..>
 				if(VDBG){
 					System.out.println("stackstring:"+stackstring);
 				}
 				//再放置回al_LineString
 				linetext.content=stackstring;	//将文本替换成magic_stack中生加工过的
+				stackstring="";
+				stackstring="";
 			}
 		}
 		else{	//划分失败
