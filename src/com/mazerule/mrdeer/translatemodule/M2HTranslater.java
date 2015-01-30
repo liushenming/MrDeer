@@ -18,7 +18,7 @@ public class M2HTranslater {
 	private ArrayList<LineText> al_LineString;	//行文本
 	public boolean DBG=false;
 	public boolean VDBG=false;
-	public boolean VVDBG=false;
+	public boolean VVDBG=true;
 	
 	/*
 	 * 文本的类型
@@ -41,19 +41,55 @@ public class M2HTranslater {
 	static final Pattern pattern_sbline_discontinuous=Pattern.compile("(\\s*-\\s*){3,}");
 	//static final Pattern pattern_endnormaltext=Pattern.compile("");
 	static final Pattern pattern_starline=Pattern.compile("(\\s*\\*\\s*){3,}");
+	static final Pattern pattern_blockquote=Pattern.compile("\\s*>+.+");
 	
 	//行文本类
 	class LineText{
 		String content;	//文本内容
 		int type;	//行文本的类型
-		
+		int blockquote_depth;	//处于引用块的深度，初值为0
+		boolean isblockquote_start;//是否是一个引用块的头
+		boolean isblockquote_end;//是否是引用块的结尾
+
 		//创建时只能传入文本内容。
 		LineText(String c){
 			content=c;
 			type=judgeType(content);
-			if(DBG){
-				System.out.println("content:"+content+"\ntype:"+type+"\n");
+			blockquote_depth=caculateBlockquoteDepth();
+			isblockquote_end=false;
+		}
+
+		//计算文本行的引用深度
+		int caculateBlockquoteDepth(){
+			int quotecount=0;
+			//引用模式匹配成功，
+			if(pattern_blockquote.matcher(content).matches()){
+				//此时只要是有引用符号的，都认为是引用开始，接下来的扫描会细化
+				isblockquote_start=true;	
+				int index=0;
+				//扫描字符串，数连续的'>'个数
+				while(index<content.length()){
+					//一个还没找着，这次也没找着，要继续找
+					if(quotecount==0&&content.charAt(index)!='>'){
+						index++;
+						continue;
+					}
+					//这次找着了，进入下一轮
+					if(content.charAt(index)=='>'){
+						quotecount++;
+						index++;
+						continue;
+					}
+					//已经找着过了，但这次不是
+					else{
+						break;
+					}
+				}
+				content=content.substring(index);
+			}else{
+				isblockquote_start=false;
 			}
+			return quotecount;
 		}
 		
 		//判断出文本行的类型
@@ -128,9 +164,6 @@ public class M2HTranslater {
 			case ' ':
 				t=ELEMENTTYPE_SPACE;
 				break;
-			case '	':
-				t=ELEMENTTYPE_OP_TAB;
-				break;
 			case '*':
 				t=ELEMENTTYPE_OP_STAR;
 				break;
@@ -142,6 +175,9 @@ public class M2HTranslater {
 				break;
 			case '\n':
 				t=ELEMENTTYPE_OP_BR;
+				break;
+			case '\t':
+				t=ELEMENTTYPE_OP_TAB;
 				break;
 			default:
 				t=ELEMENTTYPE_TEXT;
@@ -206,6 +242,7 @@ public class M2HTranslater {
 						lt_next.type==TEXTTYPE_SBLINE_CONTINUOUS)){
 					//将当前文本的type改成TEXTTYPE_TITLE
 					lt_curr.type=TEXTTYPE_TITLE_EQUAL;
+					lt_curr.blockquote_depth=0;	//这类文本行不能位于引用中
 					//===/----这种TEXTTYPE_TITLELINE文本行已经失去他们的价值，删掉
 					al_LineString.remove(i+1);
 					continue;
@@ -219,6 +256,23 @@ public class M2HTranslater {
 					i--;
 					continue;
 				}
+				//当前行是个文本且可能影响下面的行，因为它是具有引用深度的
+				if(lt_next!=null&&(lt_curr.type==TEXTTYPE_NORMAL||
+						lt_curr.type==TEXTTYPE_ENDNORMALTEXT)&&
+						lt_curr.blockquote_depth>0){
+					if(lt_next.type==TEXTYPE_SPACELINE){
+						lt_curr.isblockquote_end=true;
+					}else if((lt_next.type==TEXTTYPE_NORMAL||
+							lt_next.type==TEXTTYPE_ENDNORMALTEXT)
+							&&lt_next.blockquote_depth<lt_curr.blockquote_depth){
+						lt_next.blockquote_depth=lt_curr.blockquote_depth;
+						lt_next.isblockquote_start=false;	//下一行文本不是引用开始
+					}
+				}
+			}
+			if(VVDBG){
+				System.out.println("第2次扫描以后,the al_LineString:");
+				printLineStrings();
 			}
 			//第三次扫描，将同一个段落的文本合并成一行
 			for(int i=0;i<al_LineString.size();i++){
@@ -231,27 +285,98 @@ public class M2HTranslater {
 				if(lt_next!=null&&lt_curr.type==TEXTTYPE_NORMAL&&
 						(lt_next.type==TEXTTYPE_NORMAL||
 						lt_next.type==TEXTTYPE_ENDNORMALTEXT)){
-					//合并两个文本到当前的LineText,删除next
-					lt_curr.content+=lt_next.content;
+					/*lt_curr.content+=lt_next.content;
 					lt_curr.type=lt_next.type;
 					al_LineString.remove(i+1);
 					i--;
-					continue;
+					continue;*/
+					
+					//当前行不在引用中，下一行在引用中
+					if(lt_curr.blockquote_depth==0&&lt_next.blockquote_depth>0){
+						//这一行就停止了
+						continue;
+					}
+					//都不在引用中
+					if(lt_curr.blockquote_depth==0&&lt_next.blockquote_depth==0){
+						//合并两个文本到当前的LineText,删除next
+						lt_curr.content+=lt_next.content;
+						lt_curr.type=lt_next.type;
+						al_LineString.remove(i+1);
+						i--;
+						continue;
+					}
+					//都在引用中
+					if(lt_curr.blockquote_depth>0){
+						//当前行是引用开始
+						if(lt_curr.isblockquote_start==true){
+							lt_curr.content="\t"+lt_curr.content;
+						}
+						//如果下一行是个引用开始，要加入‘\t\n’
+						if(lt_next.isblockquote_start==true){
+							lt_curr.content+="\n\t"+lt_next.content;
+						}else{
+							lt_curr.content+=lt_next.content;
+						}
+						//该行的isblockquote_start属性已经发挥过了价值了，应该置false
+						lt_curr.isblockquote_start=false;
+						lt_curr.type=lt_next.type;
+						//深度只会越变越大
+						lt_curr.blockquote_depth=lt_next.blockquote_depth;
+						al_LineString.remove(i+1);
+						i--;
+						continue;
+					}
+					
 				}
 				//当前是TEXTTYPE_ENDNORMALTEXT，下一行是也是普通文本/TEXTTYPE_ENDNORMALTEXT
 				if(lt_next!=null&&lt_curr.type==TEXTTYPE_ENDNORMALTEXT&&
 						(lt_next.type==TEXTTYPE_NORMAL||
 						lt_next.type==TEXTTYPE_ENDNORMALTEXT)){
 					//合并两个文本到当前的LineText,以\n间隔,删除next
-					lt_curr.content+="\n"+lt_next.content;
+					/*lt_curr.content+="\n"+lt_next.content;
 					lt_curr.type=lt_next.type;
 					al_LineString.remove(i+1);
 					i--;
-					continue;
+					continue;*/
+					if(lt_curr.blockquote_depth==0&&lt_next.blockquote_depth>0){
+						//这一行就停止了
+						continue;
+					}
+					//都不在引用中
+					if(lt_curr.blockquote_depth==0&&lt_next.blockquote_depth==0){
+						//合并两个文本到当前的LineText,删除next
+						lt_curr.content+="\n"+lt_next.content;
+						lt_curr.type=lt_next.type;
+						al_LineString.remove(i+1);
+						i--;
+						continue;
+					}
+					//都在引用中
+					if(lt_curr.blockquote_depth>0){
+						//当前行是引用开始
+						if(lt_curr.isblockquote_start==true){
+							lt_curr.content="\t"+lt_curr.content;
+						}
+						//如果下一行是个引用开始，要加入‘\t\n’
+						if(lt_next.isblockquote_start==true){
+							lt_curr.content+="\n\t"+lt_next.content;
+						}else{
+							lt_curr.content+="\n"+lt_next.content;
+						}
+						lt_curr.type=lt_next.type;
+						//该行的isblockquote_start属性已经发挥过了价值了，应该置false
+						lt_curr.isblockquote_start=false;
+						//深度只会越变越大
+						lt_curr.blockquote_depth=lt_next.blockquote_depth;
+						al_LineString.remove(i+1);
+						i--;
+						continue;
+					}
+					
 				}
 			}
-			if(VDBG){
-				System.out.println("the al_LineString:");
+			if(VVDBG){
+				System.out.println("第三次扫描以后，the al_LineString:");
 				printLineStrings();
 			}
 			return true;
@@ -509,11 +634,40 @@ public class M2HTranslater {
 									break;
 								}
 							}
+							//压'\t'
+							else if(se_add.type==ELEMENTTYPE_OP_TAB){
+								//直接把'\t'转换成"<blockquote>压进栈中"
+								if(se_top==null){
+									se_add=new StackElement(ELEMENTTYPE_TEXT,"<blockquote>");
+									magic_stack.push(se_add);
+									break;
+								}
+								
+								else if(se_top.type==ELEMENTTYPE_TEXT){
+									magic_stack.pop();
+									String newtext=se_top.content+"<blockquote>";
+									se_add=new StackElement(ELEMENTTYPE_TEXT,newtext);
+									magic_stack.push(se_add);
+									break;
+								}
+								else{
+									break;
+								}
+							}
+							//其余情况就无视吧
+							else{
+								break;
+							}
 						}
 						
 						
 						lineindex++;
 					}
+					
+					/*
+					 * 清理magic_stack，出行结果
+					 * 
+					 */
 					//从magic_stack中将行字符串取出来
 					String stackstring="";	//从栈中取出的加工过一次的文本
 					String stackendstring="";	//例如</h1>这种结尾控制文本
@@ -585,8 +739,16 @@ public class M2HTranslater {
 					}
 					stackstring=stackstring+stackendstring;	//拼接上</..></..>
 					if(linetext.type==TEXTTYPE_NORMAL){
+						//把引用深度的结束标签添上
+						for(int i=0;i<linetext.blockquote_depth;i++){
+							stackstring+="</blockquote>";
+						}
 						stackstring="<p>"+stackstring+"</p>";
 					}else if(linetext.type==TEXTTYPE_ENDNORMALTEXT){
+						//把引用深度的结束标签添上
+						for(int i=0;i<linetext.blockquote_depth;i++){
+							stackstring+="</blockquote>";
+						}
 						stackstring="<p>"+stackstring+"<br/></p>";
 					}else if(linetext.type==TEXTTYPE_TITLE_EQUAL){
 						stackstring="<h1>"+stackstring+"</h1>";
@@ -634,7 +796,8 @@ public class M2HTranslater {
 			Iterator<LineText> iter=al_LineString.iterator();
 			while(iter.hasNext()){
 				LineText lt=iter.next();
-				System.out.println("type:"+lt.type+"\ncontent:"+lt.content);
+				System.out.println("type:"+lt.type+"\ncontent:"+lt.content+"\n"
+						+ "blockquote_depth:"+lt.blockquote_depth);
 			}
 		}
 	}

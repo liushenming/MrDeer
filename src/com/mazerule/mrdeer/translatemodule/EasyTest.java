@@ -7,17 +7,15 @@ public class EasyTest {
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		/*Pattern pattern=Pattern.compile("[#]{2,}.*");
-		String s="####  Ñ©    ¹ú";
+		Pattern pattern=Pattern.compile("\\s*>+.+");
+		String s=" >>> ss";
 		Matcher m=pattern.matcher(s);
 		if(m.matches()){
 			System.out.println("success");
 		}else{
 			System.out.println("fail");
-		}*/
+		}
 		
-		HtmlGenerator hg=new HtmlGenerator();
-		hg.writeFile("E:\\MDFiles\\", "hgfile.html", 0);
 	}
 
 }
