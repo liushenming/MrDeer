@@ -101,6 +101,7 @@ public class M2HTranslater {
 	private final static int ELEMENTTYPE_OP_5JING=12;	//#####
 	private final static int ELEMENTTYPE_OP_6JING=13;	//######
 	private final static int ELEMENTTYPE_OP_ANGLE=14;	//>
+	private final static int ELEMENTTYPE_OP_BR=15;	//\n
 	//........
 	
 	
@@ -138,6 +139,9 @@ public class M2HTranslater {
 				break;
 			case '#':
 				t=ELEMENTTYPE_OP_JING;
+				break;
+			case '\n':
+				t=ELEMENTTYPE_OP_BR;
 				break;
 			default:
 				t=ELEMENTTYPE_TEXT;
@@ -486,6 +490,24 @@ public class M2HTranslater {
 							//压'######'
 							else if(se_add.type==ELEMENTTYPE_OP_6JING){
 								
+							}
+							//压'\n'
+							else if(se_add.type==ELEMENTTYPE_OP_BR){
+								if(se_top==null){
+									//直接输入了一行换行符，无视
+									break;
+								}
+								if(se_top.type==ELEMENTTYPE_TEXT){
+									magic_stack.pop();
+									String newtext=se_top.content+"<br/>";
+									se_add=new StackElement(ELEMENTTYPE_TEXT,newtext);
+									magic_stack.push(se_add);
+									break;
+								}
+								//其他一律情况都要无视
+								else{
+									break;
+								}
 							}
 						}
 						
