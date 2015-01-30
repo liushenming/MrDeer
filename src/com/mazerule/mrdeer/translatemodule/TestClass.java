@@ -33,12 +33,22 @@ public class TestClass {
 			//进行解析
 			M2HTranslater translater=new M2HTranslater(sb.toString());
 			String string_html=translater.translate();
-			
 			if(VDBG)
 			{
 				System.out.println("main(),string_html:\n"+string_html);
 			}
-			
+			//将string_html写入.html文件中
+			HtmlGenerator hg=new HtmlGenerator();
+			hg.setHtmlBody(string_html);
+			if(hg.writeFile("E:\\MDFiles\\", "hgfile.html", 0)){
+				if(VDBG){
+					System.out.println("html文件生成成功");
+				}
+			}else{
+				if(VDBG){
+					System.out.println("html文件生成失败");
+				}
+			}			
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
