@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.ListIterator;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /*
@@ -54,8 +55,10 @@ public class M2HTranslater {
 		//创建时只能传入文本内容。
 		LineText(String c){
 			content=c;
-			type=judgeType(content);
+			//计算出引用深度，并将引用符号去除
 			blockquote_depth=caculateBlockquoteDepth();
+			type=judgeType(content);
+			
 			isblockquote_end=false;
 		}
 
@@ -235,8 +238,11 @@ public class M2HTranslater {
 				if(i+1<al_LineString.size()){
 					lt_next=al_LineString.get(i+1);
 				}
+				if(lt_next==null){
+					break;
+				}
 				//如果当前文本行是一个普通文本/换行文本，并且下一个文本行是====或者是-----
-				if(lt_next!=null&&(lt_curr.type==TEXTTYPE_NORMAL
+				if((lt_curr.type==TEXTTYPE_NORMAL
 						||lt_curr.type==TEXTTYPE_ENDNORMALTEXT)&&
 						(lt_next.type==TEXTTYPE_TITLELINE||
 						lt_next.type==TEXTTYPE_SBLINE_CONTINUOUS)){
@@ -248,7 +254,7 @@ public class M2HTranslater {
 					continue;
 				}
 				//当前行，下一行都是空白行
-				if(lt_next!=null&&lt_curr.type==TEXTYPE_SPACELINE&&
+				if(lt_curr.type==TEXTYPE_SPACELINE&&
 						lt_next.type==TEXTYPE_SPACELINE){
 					//删掉下面一行
 					al_LineString.remove(i+1);
@@ -257,13 +263,15 @@ public class M2HTranslater {
 					continue;
 				}
 				//当前行是个文本且可能影响下面的行，因为它是具有引用深度的
-				if(lt_next!=null&&(lt_curr.type==TEXTTYPE_NORMAL||
-						lt_curr.type==TEXTTYPE_ENDNORMALTEXT)&&
+				if((lt_curr.type==TEXTTYPE_NORMAL||
+						lt_curr.type==TEXTTYPE_ENDNORMALTEXT||
+						lt_curr.type==TEXTTYPE_TITLE_JING)&&
 						lt_curr.blockquote_depth>0){
 					if(lt_next.type==TEXTYPE_SPACELINE){
 						lt_curr.isblockquote_end=true;
 					}else if((lt_next.type==TEXTTYPE_NORMAL||
-							lt_next.type==TEXTTYPE_ENDNORMALTEXT)
+							lt_next.type==TEXTTYPE_ENDNORMALTEXT||
+							lt_next.type==TEXTTYPE_TITLE_JING)
 							&&lt_next.blockquote_depth<lt_curr.blockquote_depth){
 						lt_next.blockquote_depth=lt_curr.blockquote_depth;
 						lt_next.isblockquote_start=false;	//下一行文本不是引用开始
@@ -281,15 +289,13 @@ public class M2HTranslater {
 				if(i+1<al_LineString.size()){
 					lt_next=al_LineString.get(i+1);
 				}
+				if(lt_next==null){
+					break;
+				}
 				//当前是普通文本，下一行是也是普通文本/TEXTTYPE_ENDNORMALTEXT
-				if(lt_next!=null&&lt_curr.type==TEXTTYPE_NORMAL&&
+				if(lt_curr.type==TEXTTYPE_NORMAL&&
 						(lt_next.type==TEXTTYPE_NORMAL||
 						lt_next.type==TEXTTYPE_ENDNORMALTEXT)){
-					/*lt_curr.content+=lt_next.content;
-					lt_curr.type=lt_next.type;
-					al_LineString.remove(i+1);
-					i--;
-					continue;*/
 					
 					//当前行不在引用中，下一行在引用中
 					if(lt_curr.blockquote_depth==0&&lt_next.blockquote_depth>0){
@@ -329,15 +335,10 @@ public class M2HTranslater {
 					
 				}
 				//当前是TEXTTYPE_ENDNORMALTEXT，下一行是也是普通文本/TEXTTYPE_ENDNORMALTEXT
-				if(lt_next!=null&&lt_curr.type==TEXTTYPE_ENDNORMALTEXT&&
-						(lt_next.type==TEXTTYPE_NORMAL||
+				if((lt_curr.type==TEXTTYPE_ENDNORMALTEXT)
+						&&(lt_next.type==TEXTTYPE_NORMAL||
 						lt_next.type==TEXTTYPE_ENDNORMALTEXT)){
 					//合并两个文本到当前的LineText,以\n间隔,删除next
-					/*lt_curr.content+="\n"+lt_next.content;
-					lt_curr.type=lt_next.type;
-					al_LineString.remove(i+1);
-					i--;
-					continue;*/
 					if(lt_curr.blockquote_depth==0&&lt_next.blockquote_depth>0){
 						//这一行就停止了
 						continue;
@@ -374,6 +375,12 @@ public class M2HTranslater {
 					}
 					
 				}
+				//#标题文本则自己判断要不要在开头加上<blockquote>
+				if(lt_curr.type==TEXTTYPE_TITLE_JING&&
+						lt_curr.isblockquote_start==true){
+					lt_curr.content="\t"+lt_curr.content;
+				}
+				
 			}
 			if(VVDBG){
 				System.out.println("第三次扫描以后，the al_LineString:");
@@ -441,6 +448,8 @@ public class M2HTranslater {
 										//行中多个空格合并成为一个，无视该一个空格
 										break;
 									}
+								}else{
+									break;
 								}
 							}
 							//压正文
@@ -541,7 +550,8 @@ public class M2HTranslater {
 									se_add=new StackElement(ELEMENTTYPE_TEXT,newtext);
 									se_top=magic_stack.peek();
 									continue;
-								}else{
+								}
+								else{
 									magic_stack.add(se_add);
 								}
 							}
@@ -586,35 +596,47 @@ public class M2HTranslater {
 												ELEMENTTYPE_TEXT,"#"));
 										break;
 									}else if(se_top.type==ELEMENTTYPE_TEXT){
+										Pattern patt_block=Pattern.compile("(<blockquote>)+");
+										Matcher matcher=patt_block.matcher(se_top.content);
+										if(matcher.matches()){
+											//说明#前只有\t
+											magic_stack.push(se_add);
+											break;
+										}
 										magic_stack.pop();
 										//填至末尾
 										String newstring=se_top.content+="#";
 										se_add=new StackElement(ELEMENTTYPE_TEXT,newstring);
 										magic_stack.push(se_add);
 										break;
+									}else{
+										break;
 									}
+								}
+								else{
+									break;
 								}
 								
 							}
 							//压'##'
 							else if(se_add.type==ELEMENTTYPE_OP_2JING){
-								
+								break;
 							}
 							//压'###'
 							else if(se_add.type==ELEMENTTYPE_OP_3JING){
-								
+								break;
 							}
 							//压'####'
 							else if(se_add.type==ELEMENTTYPE_OP_4JING){
-								
+								break;
 							}
 							//压'#####'
 							else if(se_add.type==ELEMENTTYPE_OP_5JING){
-								
+								break;
 							}
 							//压'######'
 							else if(se_add.type==ELEMENTTYPE_OP_6JING){
-								
+								break;
 							}
 							//压'\n'
 							else if(se_add.type==ELEMENTTYPE_OP_BR){
@@ -693,7 +715,7 @@ public class M2HTranslater {
 							if(magic_stack.size()==1){
 								stackstring="#";
 							}else{
-								stackstring="<h1>"+stackstring;
+								stackstring+="<h1>";
 								stackendstring="</h1>"+stackendstring;
 							}
 						}else if(type_get==ELEMENTTYPE_OP_2JING){
@@ -701,35 +723,35 @@ public class M2HTranslater {
 							if(magic_stack.size()==1){
 								stackstring="<h1>#</h1>";
 							}else{
-								stackstring="<h2>"+stackstring;
+								stackstring+="<h2>";
 								stackendstring="</h2>"+stackendstring;
 							}
 						}else if(type_get==ELEMENTTYPE_OP_3JING){
 							if(magic_stack.size()==1){
 								stackstring="<h2>#</h2>";
 							}else{
-								stackstring="<h3>"+stackstring;
+								stackstring+="<h3>";
 								stackendstring="</h3>"+stackendstring;
 							}
 						}else if(type_get==ELEMENTTYPE_OP_4JING){
 							if(magic_stack.size()==1){
 								stackstring="<h3>#</h3>";
 							}else{
-								stackstring="<h4>"+stackstring;
+								stackstring+="<h4>";
 								stackendstring="</h4>"+stackendstring;
 							}
 						}else if(type_get==ELEMENTTYPE_OP_5JING){
 							if(magic_stack.size()==1){
 								stackstring="<h4>#</h4>";
 							}else{
-								stackstring="<h5>"+stackstring;
+								stackstring+="<h5>";
 								stackendstring="</h5>"+stackendstring;
 							}
 						}else if(type_get==ELEMENTTYPE_OP_6JING){
 							if(magic_stack.size()==1){
 								stackstring="<h5>#</h5>";
 							}else{
-								stackstring="<h6>"+stackstring;
+								stackstring+="<h6>";
 								stackendstring="</h6>"+stackendstring;
 							}
 						}else if(type_get==ELEMENTTYPE_TEXT){
@@ -739,28 +761,40 @@ public class M2HTranslater {
 					}
 					stackstring=stackstring+stackendstring;	//拼接上</..></..>
 					if(linetext.type==TEXTTYPE_NORMAL){
-						//把引用深度的结束标签添上
-						for(int i=0;i<linetext.blockquote_depth;i++){
-							stackstring+="</blockquote>";
-						}
 						stackstring="<p>"+stackstring+"</p>";
-					}else if(linetext.type==TEXTTYPE_ENDNORMALTEXT){
-						//把引用深度的结束标签添上
-						for(int i=0;i<linetext.blockquote_depth;i++){
-							stackstring+="</blockquote>";
+						if(linetext.isblockquote_end){
+							//把引用深度的结束标签添上
+							for(int i=0;i<linetext.blockquote_depth;i++){
+								stackstring+="</blockquote>";
+							}
 						}
+					}else if(linetext.type==TEXTTYPE_ENDNORMALTEXT){
 						stackstring="<p>"+stackstring+"<br/></p>";
+						if(linetext.isblockquote_end){
+							//把引用深度的结束标签添上
+							for(int i=0;i<linetext.blockquote_depth;i++){
+								stackstring+="</blockquote>";
+							}
+						}
 					}else if(linetext.type==TEXTTYPE_TITLE_EQUAL){
 						stackstring="<h1>"+stackstring+"</h1>";
+					}else if(linetext.type==TEXTTYPE_TITLE_JING){
+						if(linetext.isblockquote_end){
+							//把引用深度的结束标签添上
+							for(int i=0;i<linetext.blockquote_depth;i++){
+								stackstring+="</blockquote>";
+							}
+						}
 					}
-					
+						
 					if(VDBG){
 						System.out.println("stackstring:"+stackstring);
 					}
 					//再放置回al_LineString
 					linetext.content=stackstring;	//将文本替换成magic_stack中生加工过的
-					
 				}
+				
+				
 				//如果当前文本行是- - -- --
 				else if(linetext.type==TEXTTYPE_SBLINE_DISCONTINUOUS||
 						linetext.type==TEXTTYPE_STARLINE){
@@ -797,7 +831,8 @@ public class M2HTranslater {
 			while(iter.hasNext()){
 				LineText lt=iter.next();
 				System.out.println("type:"+lt.type+"\ncontent:"+lt.content+"\n"
-						+ "blockquote_depth:"+lt.blockquote_depth);
+						+ "blockquote_depth:"+lt.blockquote_depth+
+						"\n,isblockquote_start:"+lt.isblockquote_start);
 			}
 		}
 	}
