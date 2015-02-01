@@ -33,6 +33,7 @@ public class M2HTranslater {
 	private final static int TEXTTYPE_SBLINE_DISCONTINUOUS=16;	//- --，包含空格和-
 	private final static int TEXTTYPE_ENDNORMALTEXT=17;	//最后是两空格的普通文本类型
 	private final static int TEXTTYPE_STARLINE=18;	//** *，可以有空格\
+	private final static int TEXTTYPE_LIST=19;	//列表类型的文本行
 	
 	//用于内部类LineText判断文本类型用
 	static final Pattern pattern_spaceline=Pattern.compile("\\s*");
@@ -43,6 +44,7 @@ public class M2HTranslater {
 	//static final Pattern pattern_endnormaltext=Pattern.compile("");
 	static final Pattern pattern_starline=Pattern.compile("(\\s*\\*\\s*){3,}");
 	static final Pattern pattern_blockquote=Pattern.compile("\\s*>+.+");
+	static final Pattern pattern_list=Pattern.compile("\\s+([*+]|[0-9]+\\.)\\s+.+");
 	
 	//行文本类
 	class LineText{
@@ -51,17 +53,33 @@ public class M2HTranslater {
 		int blockquote_depth;	//处于引用块的深度，初值为0
 		boolean isblockquote_start;//是否是一个引用块的头
 		boolean isblockquote_end;//是否是引用块的结尾
-
+		int list_len;	//列表的缩进
+		boolean list_order;	//true代表有序列表，false代表无序列表
+		boolean islist_head;	//是否是某个列表的第一个
+		int list_tailnum;	//列表的尾数量
+		
+		
 		//创建时只能传入文本内容。
 		LineText(String c){
 			content=c;
 			//计算出引用深度，并将引用符号去除
 			blockquote_depth=caculateBlockquoteDepth();
 			type=judgeType(content);
-			
+			caculateListParam();
 			isblockquote_end=false;
 		}
-
+		
+		//计算list相关的参数
+		void caculateListParam(){
+			if(type!=TEXTTYPE_LIST){
+				list_len=0;
+				islist_head=false;
+				list_tailnum=0;
+				return;
+			}
+			
+		}
+		
 		//计算文本行的引用深度
 		int caculateBlockquoteDepth(){
 			int quotecount=0;
@@ -111,6 +129,8 @@ public class M2HTranslater {
 				return TEXTTYPE_STARLINE;
 			}else if(pattern_title_jing.matcher(content).matches()){
 				return TEXTTYPE_TITLE_JING;
+			}else if(pattern_list.matcher(content).matches()){
+				return TEXTTYPE_LIST;
 			}
 			
 			//TEXTTYPE_ENDNORMALTEXT暂时用排除法判断
