@@ -7,8 +7,8 @@ public class EasyTest {
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		Pattern pattern=Pattern.compile("\\s*>+.+");
-		String s=" >>> ss";
+		Pattern pattern=Pattern.compile("\\s*([*+]|[0-9]+\\.)\\s+.+");
+		String s="   1. hhh";
 		Matcher m=pattern.matcher(s);
 		if(m.matches()){
 			System.out.println("success");

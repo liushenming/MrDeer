@@ -1,6 +1,7 @@
 package com.mazerule.mrdeer.translatemodule;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.ListIterator;
@@ -17,6 +18,7 @@ public class M2HTranslater {
 	
 	//<行号,行字符串>
 	private ArrayList<LineText> al_LineString;	//行文本
+	private LinkedList<Boolean> stack_listtail;	//列表项的尾巴栈
 	public boolean DBG=false;
 	public boolean VDBG=false;
 	public boolean VVDBG=true;
@@ -44,7 +46,7 @@ public class M2HTranslater {
 	//static final Pattern pattern_endnormaltext=Pattern.compile("");
 	static final Pattern pattern_starline=Pattern.compile("(\\s*\\*\\s*){3,}");
 	static final Pattern pattern_blockquote=Pattern.compile("\\s*>+.+");
-	static final Pattern pattern_list=Pattern.compile("\\s+([*+]|[0-9]+\\.)\\s+.+");
+	static final Pattern pattern_list=Pattern.compile("\\s*([*+]|[0-9]+\\.)\\s+.+");
 	
 	//行文本类
 	class LineText{
@@ -54,10 +56,10 @@ public class M2HTranslater {
 		boolean isblockquote_start;//是否是一个引用块的头
 		boolean isblockquote_end;//是否是引用块的结尾
 		int list_len;	//列表的缩进
-		boolean list_order;	//true代表有序列表，false代表无序列表
+		boolean islist_order;	//true代表有序列表，false代表无序列表
 		boolean islist_head;	//是否是某个列表的第一个
 		int list_tailnum;	//列表的尾数量
-		
+		LinkedList<Boolean> list_tailstack;	//列表的尾栈
 		
 		//创建时只能传入文本内容。
 		LineText(String c){
@@ -71,13 +73,39 @@ public class M2HTranslater {
 		
 		//计算list相关的参数
 		void caculateListParam(){
+			list_len=0;
+			islist_head=false;
+			list_tailnum=0;
 			if(type!=TEXTTYPE_LIST){
-				list_len=0;
-				islist_head=false;
-				list_tailnum=0;
 				return;
 			}
-			
+			int index=0;
+			//计算list_len的粗糙值(要在第二次扫描中进行调整)
+			list_len=1;	//初值是1
+			while(index<content.length()){
+				if(content.charAt(index)==' '){
+					list_len++;
+				}else{
+					//此时判断list项的类型，ul是无序，ol是有序
+					if(content.charAt(index)=='*'||content.charAt(index)=='+'){
+						islist_order=false;
+					}
+					else{
+						islist_order=true;
+					}
+					break;
+				}
+				index++;
+			}
+			//去除文本行中'+','*','100.'这类列表符号
+			while(index<content.length()){
+				if(content.charAt(index)!=' '){
+					index++;
+				}else{
+					break;
+				}
+			}
+			content=content.substring(index);
 		}
 		
 		//计算文本行的引用深度
@@ -222,6 +250,7 @@ public class M2HTranslater {
 		else{
 			this.origin_string="";	
 		}
+		stack_listtail=new LinkedList<Boolean>();
 	}
 	
 	//将origin_string切割，分到map_string中
@@ -259,6 +288,15 @@ public class M2HTranslater {
 					lt_next=al_LineString.get(i+1);
 				}
 				if(lt_next==null){
+					if(lt_curr.type==TEXTTYPE_LIST){
+						lt_curr.list_tailnum=lt_curr.list_len;
+						lt_curr.list_tailstack=new LinkedList<Boolean>();
+						//向文本行的list_tailstack成员中加入Boolean对象,并且结构于stack_listtail一致
+						for(int j=0;j<lt_curr.list_tailnum;j++){
+							lt_curr.list_tailstack.addLast(stack_listtail.pop());
+						}
+						
+					}
 					break;
 				}
 				//如果当前文本行是一个普通文本/换行文本，并且下一个文本行是====或者是-----
@@ -297,11 +335,49 @@ public class M2HTranslater {
 						lt_next.isblockquote_start=false;	//下一行文本不是引用开始
 					}
 				}
+				//处理列表第一个项
+				if(lt_curr.type!=TEXTTYPE_LIST&&lt_next.type==TEXTTYPE_LIST){
+					lt_next.islist_head=true;
+					lt_next.list_len=1;	//第一个列表项的list_len必须是1
+					stack_listtail.push(lt_next.islist_order);
+				}
+				//当前文本和下一文本都是list
+				if(lt_curr.type==TEXTTYPE_LIST&&lt_next.type==TEXTTYPE_LIST){
+					//第一行文本就是列表项
+					if(i==0){
+						lt_curr.islist_head=true;
+						lt_curr.list_len=1;
+						stack_listtail.push(lt_curr.islist_order);
+					}
+					if(lt_next.list_len>lt_curr.list_len){
+						lt_next.list_len=lt_curr.list_len+1;
+						lt_next.islist_head=true;
+						stack_listtail.push(lt_next.islist_order);
+					}else if(lt_next.list_len<lt_curr.list_len){
+						lt_curr.list_tailnum=lt_curr.list_len-lt_next.list_len;
+						lt_curr.list_tailstack=new LinkedList<Boolean>();
+						for(int j=0;j<lt_curr.list_tailnum;j++){
+							lt_curr.list_tailstack.addLast(stack_listtail.pop());
+						}
+					}
+				}
+				//处理列表最后一个项
+				if(lt_curr.type==TEXTTYPE_LIST&&lt_next.type!=TEXTTYPE_LIST){
+					lt_curr.list_tailnum=lt_curr.list_len;
+					lt_curr.list_tailstack=new LinkedList<Boolean>();
+					for(int j=0;j<lt_curr.list_tailnum;j++){
+						lt_curr.list_tailstack.addLast(stack_listtail.pop());
+					}
+				}
 			}
 			if(VVDBG){
-				System.out.println("第2次扫描以后,the al_LineString:");
+				System.out.println("第2次扫描以后:");
 				printLineStrings();
+				printStack_tail();
 			}
+			
+			
+			
 			//第三次扫描，将同一个段落的文本合并成一行
 			for(int i=0;i<al_LineString.size();i++){
 				LineText lt_curr=al_LineString.get(i);	//当前的LineText
@@ -437,7 +513,8 @@ public class M2HTranslater {
 				if(linetext.type==TEXTTYPE_NORMAL||
 						linetext.type==TEXTTYPE_ENDNORMALTEXT||
 						linetext.type==TEXTTYPE_TITLE_JING||
-						linetext.type==TEXTTYPE_TITLE_EQUAL){
+						linetext.type==TEXTTYPE_TITLE_EQUAL||
+						linetext.type==TEXTTYPE_LIST){
 					String textstring=linetext.content;	//获取了行文本的内容
 					int lineindex=0;
 					magic_stack.clear();
@@ -805,6 +882,29 @@ public class M2HTranslater {
 								stackstring+="</blockquote>";
 							}
 						}
+					}else if(linetext.type==TEXTTYPE_LIST){
+						stackstring="<li>"+stackstring+"</li>";
+						//加上列表头：
+						if(linetext.islist_head){
+							if(linetext.islist_order){
+								stackstring="<ol>"+stackstring;
+							}else{
+								stackstring="<ul>"+stackstring;
+							}
+						}
+						//加上列表尾
+						for(int i=0;i<linetext.list_tailnum;i++){
+							if(linetext.list_tailstack!=null){
+								while(!linetext.list_tailstack.isEmpty()){
+									boolean isorder=linetext.list_tailstack.pop();
+									if(isorder){
+										stackstring+="</ol>";
+									}else{
+										stackstring+="</ul>";
+									}
+								}
+							}
+						}
 					}
 						
 					if(VDBG){
@@ -852,8 +952,14 @@ public class M2HTranslater {
 				LineText lt=iter.next();
 				System.out.println("type:"+lt.type+"\ncontent:"+lt.content+"\n"
 						+ "blockquote_depth:"+lt.blockquote_depth+
-						"\n,isblockquote_start:"+lt.isblockquote_start);
+						"\nisblockquote_start:"+lt.isblockquote_start+
+						"\nlist_len:"+lt.list_len+
+						"\nlist_tailnum"+lt.list_tailnum+"\n");
 			}
 		}
+	}
+	
+	private void printStack_tail(){
+		System.out.println(stack_listtail);
 	}
 }
