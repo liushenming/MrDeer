@@ -46,7 +46,7 @@ public class M2HTranslater {
 	//static final Pattern pattern_endnormaltext=Pattern.compile("");
 	static final Pattern pattern_starline=Pattern.compile("(\\s*\\*\\s*){3,}");
 	static final Pattern pattern_blockquote=Pattern.compile("\\s*>+.+");
-	static final Pattern pattern_list=Pattern.compile("\\s*([*+]|[0-9]+\\.)\\s+.+");
+	static final Pattern pattern_list=Pattern.compile("\\s*([*+-]|[0-9]+\\.)\\s+.+");
 	
 	//行文本类
 	class LineText{
@@ -87,7 +87,8 @@ public class M2HTranslater {
 					list_len++;
 				}else{
 					//此时判断list项的类型，ul是无序，ol是有序
-					if(content.charAt(index)=='*'||content.charAt(index)=='+'){
+					if(content.charAt(index)=='*'||content.charAt(index)=='+'
+							||content.charAt(index)=='-'){
 						islist_order=false;
 					}
 					else{
