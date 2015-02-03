@@ -47,6 +47,8 @@ public class M2HTranslater {
 	static final Pattern pattern_starline=Pattern.compile("(\\s*\\*\\s*){3,}");
 	static final Pattern pattern_blockquote=Pattern.compile("\\s*>+.+");
 	static final Pattern pattern_list=Pattern.compile("\\s*([*+-]|[0-9]+\\.)\\s+.+");
+	static final Pattern pattern_image=Pattern.compile("");
+	static final Pattern pattern_weburl=Pattern.compile("");
 	
 	//行文本类
 	class LineText{
@@ -857,6 +859,13 @@ public class M2HTranslater {
 						}
 						flag_isstackbottom=false;	//栈底已经处理过了，下一个元素不是栈底
 					}
+					
+					/*
+					 * 此处需要分析行中的pattern_image,pattern_weburl
+					 * 并且转换成html标签
+					 */
+					
+					
 					stackstring=stackstring+stackendstring;	//拼接上</..></..>
 					if(linetext.type==TEXTTYPE_NORMAL){
 						stackstring="<p>"+stackstring+"</p>";
