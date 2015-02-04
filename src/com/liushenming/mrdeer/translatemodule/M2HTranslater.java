@@ -50,7 +50,7 @@ public class M2HTranslater {
 	static final Pattern pattern_blockquote=Pattern.compile("\\s*>+.+");
 	static final Pattern pattern_list=Pattern.compile("\\s*([*+-]|[0-9]+\\.)\\s+.+");
 	static final Pattern pattern_image=Pattern.compile("!\\[.+\\]\\(.+ \".+\"\\)");
-	static final Pattern pattern_weburl=Pattern.compile("\\[.+\\]\\(.+\\)");
+	static final Pattern pattern_weburl=Pattern.compile("[^!]\\[.+\\]\\(.+\\)");
 	
 	//行文本类
 	class LineText{
@@ -871,14 +871,26 @@ public class M2HTranslater {
 					while(matcher.find()){
 						int start_index=matcher.start();
 						int end_index=matcher.end();
-						String weburl=matcher.group();	//这是stackstring中找到的目标串
+						String urlstring=matcher.group();	//这是stackstring中找到的目标串
 						//分析weburl，转换成标签格式
-						weburl="链接";
+						urlstring="链接";
 						//剔除了对应位置的字符串
-						stackstring=StringUtils.replace(stackstring,weburl,
+						stackstring=StringUtils.replace(stackstring,urlstring,
 								start_index,end_index);
 					}
-					
+					//处理完了weburl格式的
+					//处理image格式的
+					matcher=pattern_image.matcher(stackstring);
+					while(matcher.find()){
+						int start_index=matcher.start();
+						int end_index=matcher.end();
+						String imagestring=matcher.group();	//这是stackstring中找到的目标串
+						//分析weburl，转换成标签格式
+						imagestring="图像";
+						//剔除了对应位置的字符串
+						stackstring=StringUtils.replace(stackstring,imagestring,
+								start_index,end_index);
+					}
 					
 					stackstring=stackstring+stackendstring;	//拼接上</..></..>
 					if(linetext.type==TEXTTYPE_NORMAL){
