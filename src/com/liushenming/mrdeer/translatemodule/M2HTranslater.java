@@ -8,6 +8,8 @@ import java.util.ListIterator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.liushenming.mrdeer.utils.StringUtils;
+
 /*
  * Markdown文本到Html文本的转换器
  */
@@ -869,7 +871,12 @@ public class M2HTranslater {
 					while(matcher.find()){
 						int start_index=matcher.start();
 						int end_index=matcher.end();
-						//stackstring.
+						String weburl=matcher.group();	//这是stackstring中找到的目标串
+						//分析weburl，转换成标签格式
+						weburl="链接";
+						//剔除了对应位置的字符串
+						stackstring=StringUtils.replace(stackstring,weburl,
+								start_index,end_index);
 					}
 					
 					
