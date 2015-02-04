@@ -1,4 +1,4 @@
-package com.mazerule.mrdeer.translatemodule;
+package com.liushenming.mrdeer.translatemodule;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -47,8 +47,8 @@ public class M2HTranslater {
 	static final Pattern pattern_starline=Pattern.compile("(\\s*\\*\\s*){3,}");
 	static final Pattern pattern_blockquote=Pattern.compile("\\s*>+.+");
 	static final Pattern pattern_list=Pattern.compile("\\s*([*+-]|[0-9]+\\.)\\s+.+");
-	static final Pattern pattern_image=Pattern.compile("");
-	static final Pattern pattern_weburl=Pattern.compile("");
+	static final Pattern pattern_image=Pattern.compile("!\\[.+\\]\\(.+ \".+\"\\)");
+	static final Pattern pattern_weburl=Pattern.compile("\\[.+\\]\\(.+\\)");
 	
 	//行文本类
 	class LineText{
@@ -864,6 +864,13 @@ public class M2HTranslater {
 					 * 此处需要分析行中的pattern_image,pattern_weburl
 					 * 并且转换成html标签
 					 */
+					
+					Matcher matcher=pattern_weburl.matcher(stackstring);
+					while(matcher.find()){
+						int start_index=matcher.start();
+						int end_index=matcher.end();
+						//stackstring.
+					}
 					
 					
 					stackstring=stackstring+stackendstring;	//拼接上</..></..>

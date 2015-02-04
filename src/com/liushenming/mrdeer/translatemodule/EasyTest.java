@@ -1,4 +1,4 @@
-package com.mazerule.mrdeer.translatemodule;
+package com.liushenming.mrdeer.translatemodule;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -7,8 +7,9 @@ public class EasyTest {
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		Pattern pattern=Pattern.compile("\\s*([*+]|[0-9]+\\.)\\s+.+");
-		String s="   1. hhh";
+		Pattern pattern=Pattern.compile("!\\[.+\\]\\(.+ \".+\"\\)");
+		//Pattern pattern=Pattern.compile("\"+");
+		String s="![alt text](/path/to/img.jpg \"Title\")";
 		Matcher m=pattern.matcher(s);
 		if(m.matches()){
 			System.out.println("success");

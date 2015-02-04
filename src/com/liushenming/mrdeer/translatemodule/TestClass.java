@@ -1,4 +1,4 @@
-package com.mazerule.mrdeer.translatemodule;
+package com.liushenming.mrdeer.translatemodule;
 
 import java.io.BufferedReader;
 import java.io.File;
