@@ -51,6 +51,10 @@ public class M2HTranslater {
 	static final Pattern pattern_list=Pattern.compile("\\s*([*+-]|[0-9]+\\.)\\s+.+");
 	static final Pattern pattern_image=Pattern.compile("!\\[.+\\]\\(.+ \".+\"\\)");
 	static final Pattern pattern_weburl=Pattern.compile("[^!]\\[.+\\]\\(.+\\)");
+	//[xxxxx]
+	static final Pattern pattern_squarebracket=Pattern.compile("\\[.+\\]");
+	//(xxxx)
+	static final Pattern pattern_bracket=Pattern.compile("\\(.+\\)");
 	
 	//行文本类
 	class LineText{
@@ -872,21 +876,62 @@ public class M2HTranslater {
 						int start_index=matcher.start();
 						int end_index=matcher.end();
 						String urlstring=matcher.group();	//这是stackstring中找到的目标串
-						//分析weburl，转换成标签格式
-						urlstring="链接";
+						//分析urlstring，转换成标签格式
+						Matcher sqbrackets_matcher=pattern_squarebracket.
+								matcher(urlstring);
+						Matcher brackets_matcher=pattern_bracket.
+								matcher(urlstring);
+						String url_content="";	//实际上的链接
+						String url_display="";	//显示的链接名称
+						//找到了方括号内容
+						if(sqbrackets_matcher.find()){
+							url_display=sqbrackets_matcher.group();
+							url_display=url_display.substring(1,
+									url_display.length()-1);
+						}
+						if(brackets_matcher.find()){
+							url_content=brackets_matcher.group();
+							url_content=url_content.substring(1,
+									url_content.length()-1);
+						}
+						
+						urlstring="<a href=\"" + url_content + "\">"
+									+ url_display + "</a>";
 						//剔除了对应位置的字符串
 						stackstring=StringUtils.replace(stackstring,urlstring,
 								start_index,end_index);
 					}
-					//处理完了weburl格式的
+
 					//处理image格式的
 					matcher=pattern_image.matcher(stackstring);
 					while(matcher.find()){
 						int start_index=matcher.start();
 						int end_index=matcher.end();
 						String imagestring=matcher.group();	//这是stackstring中找到的目标串
-						//分析weburl，转换成标签格式
-						imagestring="图像";
+						//分析imagestring，转换成标签格式
+						Matcher sqbrackets_matcher=pattern_squarebracket.
+								matcher(imagestring);
+						Matcher brackets_matcher=pattern_bracket.
+								matcher(imagestring);
+						String alt_string="";
+						String path_string="";
+						String title_string="";
+						if(sqbrackets_matcher.find()){
+							alt_string=sqbrackets_matcher.group();
+							alt_string=alt_string.substring(1,
+									alt_string.length()-1);
+						}
+						if(brackets_matcher.find()){
+							path_string=brackets_matcher.group();
+							path_string=path_string.substring(1,
+									path_string.length()-1);
+							String image_arr[]=path_string.split("[ ]");
+							if(image_arr!=null&&image_arr.length>=2){
+								path_string=image_arr[0];
+								title_string=image_arr[1];	//带引号
+							}
+						}
+						imagestring="<img src=\""+path_string+"\" alt=\""+alt_string +"\" title="+title_string +"/>";
 						//剔除了对应位置的字符串
 						stackstring=StringUtils.replace(stackstring,imagestring,
 								start_index,end_index);
