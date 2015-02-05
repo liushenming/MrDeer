@@ -49,21 +49,19 @@ public class M2HTranslater {
 	static final Pattern pattern_starline=Pattern.compile("(\\s*\\*\\s*){3,}");
 	static final Pattern pattern_blockquote=Pattern.compile("\\s*>+.+");
 	static final Pattern pattern_list=Pattern.compile("\\s*([*+-]|[0-9]+\\.)\\s+.+");
+	
 	static final Pattern pattern_image=Pattern.compile("!\\[.+\\]\\(.+ \".+\"\\)");
 	static final Pattern pattern_weburl=Pattern.compile("[^!]\\[.+\\]\\(.+\\)");
-	//xxx "xxx"的格式
-	static final Pattern pattern_path_title=Pattern.compile(".+[ ]+\".+\"");
-	//没有空格的一段连续字符串
-	static final Pattern pattern_string_nospace=Pattern.compile("[^\\s]+");
-	//"xx xx" 
-	static final Pattern pattern_string_quot=Pattern.compile("\".*\"");
-	//[xxxxx]
+	//[xxx]
 	static final Pattern pattern_squarebracket=Pattern.compile("\\[.+\\]");
 	//[xxx][xxx]
 	static final Pattern pattern_squarebracket2=Pattern.compile("");
-	
+	//![xxx][xxx]
+	static final Pattern pattern_squarebracket2_image=Pattern.compile("");	
 	//(xxxx)
 	static final Pattern pattern_bracket=Pattern.compile("\\(.+\\)");
+	//[id]:xxx  "xxxx"
+	static final Pattern pattern_refedefine=Pattern.compile("");
 	
 	//行文本类
 	class LineText{
