@@ -12,7 +12,7 @@ import java.io.IOException;
 public class TestClass {
 
 	static boolean DBG=false;	//用于一些输出一些log
-	static boolean VDBG=true;	//用于一些输出一些细节的log
+	static boolean VDBG=false;	//用于一些输出一些细节的log
 	static boolean VVDBG=false;	//用于一些输出一些非常细节的log
 	
 	public static void main(String[] args) {

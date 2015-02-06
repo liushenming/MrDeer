@@ -12,7 +12,11 @@ public class StringUtils {
 	public static String eliminate(String string,int start,int end)
 	{
 		String head=string.substring(0, start);
-		String foot=string.substring(end);
+		String foot="";
+		if(end<string.length()){
+			foot=string.substring(end+1);
+		}
+		
 		return head+foot;
 	}
 	

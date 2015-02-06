@@ -4,7 +4,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /*
- * xxx  "xxx"的单元
+ * xxx  "xxx"的单元,weburl,image格式的组成部分
  */
 public class PathTitleUnit {
 
@@ -12,7 +12,7 @@ public class PathTitleUnit {
 	private String mTitle="";
 	
 	//xxx  "xxx"
-	private static final Pattern pattern_path_title=Pattern.compile(".+[ ]+\".+\"");
+	private static final Pattern pattern_path_title=Pattern.compile(".+[ ]+\".+\"[ ]*");
 	//xxxxx
 	private static final Pattern pattern_string_nospace=Pattern.compile("[^\\s]+");
 	//"xx xx"

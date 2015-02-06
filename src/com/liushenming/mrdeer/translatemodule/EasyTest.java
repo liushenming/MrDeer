@@ -9,8 +9,8 @@ public class EasyTest {
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		/*Pattern pattern=Pattern.compile("!\\[.+\\]\\(.+ \".+\"\\)");
-		String s="![alt text](/path/to/img.jpg \"Title\")";
+		/*Pattern pattern=Pattern.compile("\\w");
+		String s="abcdefg";
 		Matcher m=pattern.matcher(s);
 		if(m.matches()){
 			System.out.println("success");
@@ -18,11 +18,10 @@ public class EasyTest {
 			System.out.println("fail");
 		}*/
 		
-		String a="abcdefg";
-		String b="rr";
-		String c=StringUtils.replace(a, b, 1, 3);
-		System.out.println("c:"+c);
-		
+		String a="1234567";
+		String b="";
+		String c=StringUtils.eliminate(a, 1, 2);
+		System.out.println(c);
 	}
 
 }

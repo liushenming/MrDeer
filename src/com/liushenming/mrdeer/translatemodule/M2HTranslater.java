@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.ListIterator;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -21,9 +22,10 @@ public class M2HTranslater {
 	//<行号,行字符串>
 	private ArrayList<LineText> al_LineString;	//行文本
 	private LinkedList<Boolean> stack_listtail;	//列表项的尾巴栈
+	private HashMap<String,PathTitleUnit> map_referdefine;	//存放[id]:xxx "xxxx"
 	public boolean DBG=false;
-	public boolean VDBG=false;
-	public boolean VVDBG=true;
+	public boolean VDBG=true;
+	public boolean VVDBG=false;
 	
 	/*
 	 * 文本的类型
@@ -55,13 +57,13 @@ public class M2HTranslater {
 	//[xxx]
 	static final Pattern pattern_squarebracket=Pattern.compile("\\[.+\\]");
 	//[xxx][xxx]
-	static final Pattern pattern_squarebracket2=Pattern.compile("");
+	static final Pattern pattern_squarebracket2=Pattern.compile("[^!]\\[.+\\]\\[.+\\]");
 	//![xxx][xxx]
-	static final Pattern pattern_squarebracket2_image=Pattern.compile("");	
+	static final Pattern pattern_squarebracket2_image=Pattern.compile("!\\[.+\\]\\[.+\\]");	
 	//(xxxx)
 	static final Pattern pattern_bracket=Pattern.compile("\\(.+\\)");
 	//[id]:xxx  "xxxx"
-	static final Pattern pattern_refedefine=Pattern.compile("");
+	static final Pattern pattern_referdefine=Pattern.compile("\\[.+\\]:.+\\s+\".+\"");
 	
 	//行文本类
 	class LineText{
@@ -203,8 +205,7 @@ public class M2HTranslater {
 	private final static int ELEMENTTYPE_OP_4JING=11;	//####
 	private final static int ELEMENTTYPE_OP_5JING=12;	//#####
 	private final static int ELEMENTTYPE_OP_6JING=13;	//######
-	private final static int ELEMENTTYPE_OP_ANGLE=14;	//>
-	private final static int ELEMENTTYPE_OP_BR=15;	//\n
+	private final static int ELEMENTTYPE_OP_BR=14;	//\n
 	//........
 	
 	
@@ -267,6 +268,8 @@ public class M2HTranslater {
 			this.origin_string="";	
 		}
 		stack_listtail=new LinkedList<Boolean>();
+		map_referdefine=new HashMap<String,PathTitleUnit>();
+		
 	}
 	
 	//将origin_string切割，分到map_string中
@@ -504,10 +507,47 @@ public class M2HTranslater {
 	
 	//构造了M2HTranslate对象以后调用translate()进行转换
 	public String translate(){
-		//要返回的字符串
-		String string_html="";	
+		//将所有的referdefine类型的短语全部提取出来，放置到
+		Matcher matcher_referdefine=pattern_referdefine.matcher(origin_string);
+		while(matcher_referdefine.find()){
+			String rd_string=matcher_referdefine.group();
+			int rd_start_index=matcher_referdefine.start();
+			int rd_end_index=matcher_referdefine.end();
+			//[id]:PathTitleUnit部分
+			Matcher matcher_id=pattern_squarebracket.matcher(rd_string);
+			String id_string="";
+			int start_index=0;
+			int end_index=0;
+			if(matcher_id.find()){
+				id_string=matcher_id.group();
+				start_index=matcher_id.start();
+				end_index=matcher_id.end();
+			}
+			if(id_string.length()>=2){
+				id_string=id_string.substring(1, id_string.length()-1);//去方括号
+			}
+			//此时end_index指向的是[id]的末尾，而:也应该被剔除
+			//找到:所在index，设为end_index
+			while(end_index<rd_string.length()){
+				if(rd_string.charAt(end_index)==':'){
+					break;
+				}
+				end_index++;
+			}
+			String pt_string=StringUtils.eliminate(rd_string, start_index, end_index);
+			map_referdefine.put(id_string, new PathTitleUnit(pt_string));
+			//origin_string=StringUtils.eliminate(origin_string, rd_start_index, rd_end_index);
+		}
+		if(VDBG){
+			printReferDefine();	
+		}
+		
+		
+		if(!splitString()){
+			//划分失败
+			return "ERROR";
+		}
 		//先把原始文本给切割了
-		if(splitString()){
 			//以行为单位对文本进行处理
 			//先对每一行添加html标签，然后再对段落加上<p>标签
 			
@@ -954,6 +994,47 @@ public class M2HTranslater {
 								start_index,end_index);
 					}
 					
+					//[display][id],weburl
+					matcher=pattern_squarebracket2.matcher(stackstring);
+					while(matcher.find()){
+						int start_index=matcher.start();
+						int end_index=matcher.end();
+						String url_pair=matcher.group();
+						String url_id="";
+						String url_display="";
+						String url_path="";
+						String url_title="";
+						String url_string="";
+						Matcher matcher_sbracket=pattern_squarebracket.matcher(url_pair);
+						if(matcher_sbracket.find()){
+							url_display=matcher_sbracket.group();
+							url_display=url_display.substring(1, url_display.length()-1);
+						}
+						while(matcher_sbracket.find()){
+							url_id=matcher_sbracket.group(matcher_sbracket.group());	
+						}
+						if(url_id.length()>=2){
+							url_id=url_id.substring(1, url_id.length()-1);
+						}
+						PathTitleUnit ptu=map_referdefine.get(url_id);
+						if(ptu!=null){
+							url_path=ptu.getPath();
+							url_title=ptu.getTitle();
+						}
+						if("".equals(url_title)){
+							url_string="<a href=\"" + url_path + "\">"
+									+ url_display + "</a>";
+						}else{
+							url_string="<a href=\"" + url_path + "\" title=\"" + 
+									url_title+"\">" + url_display + "</a>";
+						}
+						//剔除了对应位置的字符串
+						stackstring=StringUtils.replace(stackstring,url_string,
+								start_index,end_index);
+					}
+					
+					
+					
 					stackstring=stackstring+stackendstring;	//拼接上</..></..>
 					if(linetext.type==TEXTTYPE_NORMAL){
 						stackstring="<p>"+stackstring+"</p>";
@@ -1019,10 +1100,7 @@ public class M2HTranslater {
 					linetext.content="<hr>";
 				}
 			}
-		}
-		else{	//划分失败
-			return "ERROR";
-		}
+		
 		Iterator<LineText> iter=al_LineString.iterator();
 		StringBuilder html_stringbuilder=new StringBuilder();
 		while(iter.hasNext()){
@@ -1053,6 +1131,19 @@ public class M2HTranslater {
 						"\nisblockquote_start:"+lt.isblockquote_start+
 						"\nlist_len:"+lt.list_len+
 						"\nlist_tailnum"+lt.list_tailnum+"\n");
+			}
+		}
+	}
+
+	private void printReferDefine(){
+		if(map_referdefine!=null){
+			Set<String> set=map_referdefine.keySet();
+			Iterator<String> it=set.iterator();
+			while(it.hasNext()){
+				String key=it.next();
+				PathTitleUnit ptu=map_referdefine.get(key);
+				System.out.println("id:"+key+",path:"+ptu.getPath()+",title:"+ptu.getTitle());
+				
 			}
 		}
 	}
