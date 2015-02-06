@@ -11,8 +11,14 @@ public class StringUtils {
 	 */
 	public static String eliminate(String string,int start,int end)
 	{
-		String head=string.substring(0, start);
+		if(string==null){
+			return null;
+		}
+		String head="";
 		String foot="";
+		if(start<string.length()){
+			head=string.substring(0, start);
+		}
 		if(end<string.length()){
 			foot=string.substring(end+1);
 		}

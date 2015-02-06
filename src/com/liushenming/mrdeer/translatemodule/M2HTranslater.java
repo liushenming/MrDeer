@@ -24,8 +24,8 @@ public class M2HTranslater {
 	private LinkedList<Boolean> stack_listtail;	//列表项的尾巴栈
 	private HashMap<String,PathTitleUnit> map_referdefine;	//存放[id]:xxx "xxxx"
 	public boolean DBG=false;
-	public boolean VDBG=true;
-	public boolean VVDBG=false;
+	public boolean VDBG=false;
+	public boolean VVDBG=true;
 	
 	/*
 	 * 文本的类型
@@ -53,11 +53,11 @@ public class M2HTranslater {
 	static final Pattern pattern_list=Pattern.compile("\\s*([*+-]|[0-9]+\\.)\\s+.+");
 	
 	static final Pattern pattern_image=Pattern.compile("!\\[.+\\]\\(.+ \".+\"\\)");
-	static final Pattern pattern_weburl=Pattern.compile("[^!]\\[.+\\]\\(.+\\)");
+	static final Pattern pattern_weburl=Pattern.compile("\\[.+\\]\\(.+\\)");
 	//[xxx]
-	static final Pattern pattern_squarebracket=Pattern.compile("\\[.+\\]");
+	static final Pattern pattern_squarebracket=Pattern.compile("\\[.+?\\]");
 	//[xxx][xxx]
-	static final Pattern pattern_squarebracket2=Pattern.compile("[^!]\\[.+\\]\\[.+\\]");
+	static final Pattern pattern_squarebracket2=Pattern.compile("\\[.+?\\]\\[.+?\\]");
 	//![xxx][xxx]
 	static final Pattern pattern_squarebracket2_image=Pattern.compile("!\\[.+\\]\\[.+\\]");	
 	//(xxxx)
@@ -536,7 +536,8 @@ public class M2HTranslater {
 			}
 			String pt_string=StringUtils.eliminate(rd_string, start_index, end_index);
 			map_referdefine.put(id_string, new PathTitleUnit(pt_string));
-			//origin_string=StringUtils.eliminate(origin_string, rd_start_index, rd_end_index);
+			origin_string=StringUtils.eliminate(origin_string, rd_start_index, rd_end_index-1);
+			matcher_referdefine=pattern_referdefine.matcher(origin_string);
 		}
 		if(VDBG){
 			printReferDefine();	
@@ -917,8 +918,42 @@ public class M2HTranslater {
 					 * 此处需要分析行中的pattern_image,pattern_weburl
 					 * 并且转换成html标签
 					 */
+					//处理image格式的
+					Matcher matcher=pattern_image.matcher(stackstring);
+					while(matcher.find()){
+						int start_index=matcher.start();
+						int end_index=matcher.end();
+						String imagestring=matcher.group();	//这是stackstring中找到的目标串
+						//分析imagestring，转换成标签格式
+						Matcher sqbrackets_matcher=pattern_squarebracket.
+								matcher(imagestring);
+						Matcher brackets_matcher=pattern_bracket.
+								matcher(imagestring);
+						String img_alt="";
+						String img_path="";
+						String img_title="";
+						if(sqbrackets_matcher.find()){
+							img_alt=sqbrackets_matcher.group();
+							img_alt=img_alt.substring(1,img_alt.length()-1);
+						}
+						if(brackets_matcher.find()){
+							img_path=brackets_matcher.group();
+							img_path=img_path.substring(1,
+									img_path.length()-1);
+							PathTitleUnit ptu=new PathTitleUnit(img_path);
+							img_path=ptu.getPath();
+							img_title=ptu.getTitle();
+						}
+						imagestring="<img src=\""+img_path+"\" alt=\""+
+								img_alt +"\" title=\"" + img_title + "\" />";
+						//剔除了对应位置的字符串
+						stackstring=StringUtils.replace(stackstring,imagestring,
+								start_index,end_index-1);
+						matcher=pattern_image.matcher(stackstring);
+					}
 					
-					Matcher matcher=pattern_weburl.matcher(stackstring);
+					
+					matcher=pattern_weburl.matcher(stackstring);
 					while(matcher.find()){
 						int start_index=matcher.start();
 						int end_index=matcher.end();
@@ -958,41 +993,11 @@ public class M2HTranslater {
 						}
 						//剔除了对应位置的字符串
 						stackstring=StringUtils.replace(stackstring,urlstring,
-								start_index,end_index);
+								start_index,end_index-1);
+						matcher=pattern_weburl.matcher(stackstring);
 					}
 
-					//处理image格式的
-					matcher=pattern_image.matcher(stackstring);
-					while(matcher.find()){
-						int start_index=matcher.start();
-						int end_index=matcher.end();
-						String imagestring=matcher.group();	//这是stackstring中找到的目标串
-						//分析imagestring，转换成标签格式
-						Matcher sqbrackets_matcher=pattern_squarebracket.
-								matcher(imagestring);
-						Matcher brackets_matcher=pattern_bracket.
-								matcher(imagestring);
-						String img_alt="";
-						String img_path="";
-						String img_title="";
-						if(sqbrackets_matcher.find()){
-							img_alt=sqbrackets_matcher.group();
-							img_alt=img_alt.substring(1,img_alt.length()-1);
-						}
-						if(brackets_matcher.find()){
-							img_path=brackets_matcher.group();
-							img_path=img_path.substring(1,
-									img_path.length()-1);
-							PathTitleUnit ptu=new PathTitleUnit(img_path);
-							img_path=ptu.getPath();
-							img_title=ptu.getTitle();
-						}
-						imagestring="<img src=\""+img_path+"\" alt=\""+
-								img_alt +"\" title=\"" + img_title + "\" />";
-						//剔除了对应位置的字符串
-						stackstring=StringUtils.replace(stackstring,imagestring,
-								start_index,end_index);
-					}
+					
 					
 					//[display][id],weburl
 					matcher=pattern_squarebracket2.matcher(stackstring);
@@ -1011,7 +1016,7 @@ public class M2HTranslater {
 							url_display=url_display.substring(1, url_display.length()-1);
 						}
 						while(matcher_sbracket.find()){
-							url_id=matcher_sbracket.group(matcher_sbracket.group());	
+							url_id=matcher_sbracket.group();	
 						}
 						if(url_id.length()>=2){
 							url_id=url_id.substring(1, url_id.length()-1);
@@ -1029,8 +1034,11 @@ public class M2HTranslater {
 									url_title+"\">" + url_display + "</a>";
 						}
 						//剔除了对应位置的字符串
+						
 						stackstring=StringUtils.replace(stackstring,url_string,
-								start_index,end_index);
+								start_index,end_index-1);
+						System.out.println(stackstring);
+						matcher=pattern_squarebracket2.matcher(stackstring);
 					}
 					
 					
