@@ -59,11 +59,11 @@ public class M2HTranslater {
 	//[xxx][xxx]
 	static final Pattern pattern_squarebracket2=Pattern.compile("\\[.+?\\]\\[.+?\\]");
 	//![xxx][xxx]
-	static final Pattern pattern_squarebracket2_image=Pattern.compile("!\\[.+\\]\\[.+\\]");	
+	static final Pattern pattern_squarebracket2_image=Pattern.compile("!\\[.+?\\]\\[.+?\\]");	
 	//(xxxx)
-	static final Pattern pattern_bracket=Pattern.compile("\\(.+\\)");
+	static final Pattern pattern_bracket=Pattern.compile("\\(.+?\\)");
 	//[id]:xxx  "xxxx"
-	static final Pattern pattern_referdefine=Pattern.compile("\\[.+\\]:.+\\s+\".+\"");
+	static final Pattern pattern_referdefine=Pattern.compile("\\[.+?\\]:.+\\s+\".+?\"");
 	
 	//行文本类
 	class LineText{
@@ -917,6 +917,8 @@ public class M2HTranslater {
 					/*
 					 * 此处需要分析行中的pattern_image,pattern_weburl
 					 * 并且转换成html标签
+					 * 
+					 * 注意，一定要先image，后weburl
 					 */
 					//处理image格式的
 					Matcher matcher=pattern_image.matcher(stackstring);
@@ -997,7 +999,39 @@ public class M2HTranslater {
 						matcher=pattern_weburl.matcher(stackstring);
 					}
 
-					
+					//![alt][id],image
+					matcher=pattern_squarebracket2_image.matcher(stackstring);
+					while(matcher.find()){
+						int start_index=matcher.start();
+						int end_index=matcher.end();
+						String image_pair=matcher.group();
+						String image_alt="";
+						String image_path="";
+						String image_title="";
+						String image_id="";
+						String imagestring="";
+						Matcher matcher_sbracket=pattern_squarebracket.matcher(image_pair);
+						if(matcher_sbracket.find()){
+							image_alt=matcher_sbracket.group();
+							image_alt=image_alt.substring(1, image_alt.length()-1);
+						}
+						while(matcher_sbracket.find()){
+							image_id=matcher_sbracket.group();
+						}
+						if(image_id.length()>=2){
+							image_id=image_id.substring(1, image_id.length()-1);
+						}
+						PathTitleUnit ptu=map_referdefine.get(image_id);
+						if(ptu!=null){
+							image_path=ptu.getPath();
+							image_title=ptu.getTitle();
+						}
+						imagestring="<img src=\""+image_path+"\" alt=\""+
+								image_alt +"\" title=\"" + image_title + "\" />";
+						stackstring=StringUtils.replace(stackstring,imagestring,
+								start_index,end_index-1);
+						matcher=pattern_squarebracket2_image.matcher(stackstring);
+					}
 					
 					//[display][id],weburl
 					matcher=pattern_squarebracket2.matcher(stackstring);
@@ -1037,7 +1071,7 @@ public class M2HTranslater {
 						
 						stackstring=StringUtils.replace(stackstring,url_string,
 								start_index,end_index-1);
-						System.out.println(stackstring);
+						//System.out.println(stackstring);
 						matcher=pattern_squarebracket2.matcher(stackstring);
 					}
 					
