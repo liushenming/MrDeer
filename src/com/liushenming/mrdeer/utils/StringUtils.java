@@ -4,6 +4,8 @@ public class StringUtils {
 
 	/**
 	 * 从一个String中剔除start-end的一段字符串
+	 * for example:
+	 * StringUtils.eliminate("abcdefg",1,3): return "aefg"
 	 * @param string:需要处理的字符串
 	 * @param start:要剔除部分的起始下标
 	 * @param end:要剔除部分的结束下标
@@ -16,18 +18,24 @@ public class StringUtils {
 		}
 		String head="";
 		String foot="";
+		if(start<0){
+			start=0;
+		}
+		if(end>=string.length()){
+			end=string.length()-1;
+		}
 		if(start<string.length()){
 			head=string.substring(0, start);
 		}
 		if(end<string.length()){
 			foot=string.substring(end+1);
 		}
-		
 		return head+foot;
 	}
 	
 	/**
 	 * 剪接字符串，先剪开，再插入，再拼接
+	 * for example: StringUtils.motage("abc","kk",1) :return "akkbc"
 	 * @param string_board:拼接在该字符串上
 	 * @param string_piece:这是要拼的碎片
 	 * @param start:在board的该处插入piece
@@ -35,6 +43,12 @@ public class StringUtils {
 	 */
 	public static String montage(String string_board,String string_piece,
 			int start){
+		if(start>=string_board.length()){
+			return string_board+string_piece;
+		}
+		if(start<0){
+			return string_piece+string_board;
+		}
 		String head=string_board.substring(0, start);
 		String foot=string_board.substring(start);
 		return head+string_piece+foot;

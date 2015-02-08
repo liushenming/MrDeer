@@ -9,8 +9,9 @@ public class EasyTest {
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		Pattern pattern=Pattern.compile("\\w+\\w");
-		String s="This is [google][1],this is [apple][2],and this is [ms][3].";
+		//\\[.+?\\]
+		Pattern pattern=Pattern.compile("\\B[^!]\\[.+?\\]");
+		String s="This is ![google][1],this is [apple][2],and this is [ms][3].";
 		Matcher m=pattern.matcher(s);
 		/*if(m.find()){
 			System.out.println("success");
@@ -19,15 +20,15 @@ public class EasyTest {
 		}else{
 			System.out.println("fail");
 		}*/
-		while(m.find()){
+		/*while(m.find()){
 			String s_get=m.group();
 			System.out.println(s_get);
-		}
+		}*/
 		
-		/*String a="1234567";
-		String b="";
-		String c=StringUtils.eliminate(a,6,6);
-		System.out.println(c);*/
+		String a="abcdefg";
+		String b="kk";
+		String c=StringUtils.eliminate(a,3,7);
+		System.out.println(c);
 	}
 
 }
