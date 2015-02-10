@@ -507,7 +507,7 @@ public class M2HTranslater {
 	
 	//构造了M2HTranslate对象以后调用translate()进行转换
 	public String translate(){
-		//将所有的referdefine类型的短语全部提取出来，放置到
+		//将所有的referdefine类型的短语全部提取出来，放置到map_referdefine中
 		Matcher matcher_referdefine=pattern_referdefine.matcher(origin_string);
 		while(matcher_referdefine.find()){
 			String rd_string=matcher_referdefine.group();
