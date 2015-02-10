@@ -933,35 +933,7 @@ public class M2HTranslater {
 							String string_code_in=matcher_code_in.group();
 							int start_in=matcher_code_in.start();
 							int end_in=matcher_code_in.end();
-							/*if(end_in<string_code_out.length()){
-								if(string_code_out.charAt(end_in)!=' '){
-									boolean flag=true;
-									while(flag){
-										if(matcher_code_in.find(end_in-1)){
-											end_in=matcher_code_in.end();
-											//还没有扫描到string_code_out的末尾
-											if(end_in<string_code_out.length()){
-												if(string_code_out.charAt(end_in)==' '){
-													//找到了个代码段：start_in~end_in
-													break;
-												}
-												else{
-													//没找到代码段，继续找
-													continue;
-												}
-											}
-											//end已经是string_code_out的末尾了
-											else{
-												//代码段：start_in~end_in
-												break;
-											}
-										}
-									}
-									string_code_in=string_code_out.substring(start_in, end_in);	
-	
-								}
-							}*/
-							System.out.println("code p:"+string_code_in);
+							//System.out.println("code p:"+string_code_in);
 							//string_code_in是一块代码段:start_in~end_in
 							//可能``````xxx``
 							//也可能``xxxxx`````
@@ -1010,8 +982,9 @@ public class M2HTranslater {
 					 * 注意，一定要先image，后weburl
 					 */
 					//处理image格式的
+					int find_index=0;
 					Matcher matcher=pattern_image.matcher(stackstring);
-					while(matcher.find()){
+					while(matcher.find(find_index)){
 						int start_index=matcher.start();
 						int end_index=matcher.end();
 						String imagestring=matcher.group();	//这是stackstring中找到的目标串
@@ -1040,10 +1013,11 @@ public class M2HTranslater {
 						//剔除了对应位置的字符串
 						stackstring=StringUtils.replace(stackstring,imagestring,
 								start_index,end_index-1);
+						find_index=start_index+imagestring.length();
 						matcher=pattern_image.matcher(stackstring);
 					}
 					
-					
+					find_index=0;
 					matcher=pattern_weburl.matcher(stackstring);
 					while(matcher.find()){
 						int start_index=matcher.start();
@@ -1085,10 +1059,12 @@ public class M2HTranslater {
 						//剔除了对应位置的字符串
 						stackstring=StringUtils.replace(stackstring,urlstring,
 								start_index,end_index-1);
+						find_index=start_index+urlstring.length();
 						matcher=pattern_weburl.matcher(stackstring);
 					}
 
 					//![alt][id],image
+					find_index=0;
 					matcher=pattern_squarebracket2_image.matcher(stackstring);
 					while(matcher.find()){
 						int start_index=matcher.start();
@@ -1119,10 +1095,12 @@ public class M2HTranslater {
 								image_alt +"\" title=\"" + image_title + "\" />";
 						stackstring=StringUtils.replace(stackstring,imagestring,
 								start_index,end_index-1);
+						find_index=start_index+imagestring.length();
 						matcher=pattern_squarebracket2_image.matcher(stackstring);
 					}
 					
 					//[display][id],weburl
+					find_index=0;
 					matcher=pattern_squarebracket2.matcher(stackstring);
 					while(matcher.find()){
 						int start_index=matcher.start();
@@ -1160,7 +1138,7 @@ public class M2HTranslater {
 						
 						stackstring=StringUtils.replace(stackstring,url_string,
 								start_index,end_index-1);
-						//System.out.println(stackstring);
+						find_index=start_index+url_string.length();
 						matcher=pattern_squarebracket2.matcher(stackstring);
 					}
 					
