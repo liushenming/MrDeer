@@ -64,6 +64,8 @@ public class M2HTranslater {
 	static final Pattern pattern_bracket=Pattern.compile("\\(.+?\\)");
 	//[id]:xxx  "xxxx"
 	static final Pattern pattern_referdefine=Pattern.compile("\\[.+?\\]:.+\\s+\".+?\"");
+	static final Pattern pattern_code_greedy=Pattern.compile("[`]+.+[`]+");
+	static final Pattern pattern_code_scared=Pattern.compile("[`]+.+?[`]+");
 	
 	//行文本类
 	class LineText{
@@ -495,12 +497,12 @@ public class M2HTranslater {
 						lt_curr.isblockquote_start==true){
 					lt_curr.content="\t"+lt_curr.content;
 				}
-				
 			}
 			if(VVDBG){
 				System.out.println("第三次扫描以后，the al_LineString:");
 				printLineStrings();
 			}
+			
 			return true;
 		}
 	}
@@ -912,6 +914,78 @@ public class M2HTranslater {
 							stackstring+=content_get;
 						}
 						flag_isstackbottom=false;	//栈底已经处理过了，下一个元素不是栈底
+					}
+					
+					/*
+					 * 此处处理所有`````,转换成<code>
+					 */
+					Matcher matcher_code_out=pattern_code_greedy.matcher(stackstring);
+					//贪婪型匹配
+					while(matcher_code_out.find()){
+						String string_code_out=matcher_code_out.group();
+						int start_out=matcher_code_out.start();
+						int end_out=matcher_code_out.end();
+						//勉强型匹配
+						Matcher matcher_code_in=pattern_code_scared.matcher(string_code_out);
+						while(matcher_code_in.find()){
+							String string_code_in=matcher_code_in.group();
+							System.out.println("find string_code_in:"+string_code_in);
+							int start_in=matcher_code_in.start();
+							int end_in=matcher_code_in.end();
+							if(end_in<string_code_out.length()){
+								if(string_code_out.charAt(end_in)==' '){
+									//string_code_in是一块代码段
+									//可能``````xxx``
+									//也可能``xxxxx`````
+									//也可能`````
+									System.out.println("code p:"+string_code_in);
+								}else{
+									boolean flag=true;
+									int end=end_in;
+									while(flag){
+										if(matcher_code_in.find(end-1)){
+											end=matcher_code_in.end();
+											System.out.println("end:"+end);
+											//还没有扫描到string_code_out的末尾
+											if(end<string_code_out.length()){
+												if(string_code_out.charAt(end)==' '){
+													//找到了个代码段：start_in~end
+													break;
+												}
+												else{
+													//没找到代码段，继续找
+													continue;
+												}
+											}
+											//end已经是string_code_out的末尾了
+											else{
+												//代码段：start_in~end
+												break;
+											}
+										}
+									}
+									//break出来了
+									//start_in~end是一个代码段
+									string_code_in=string_code_out.substring(start_in, end);
+									System.out.println("code p:"+string_code_in);
+									//可能``````xxx``
+									//也可能``xxxxx`````
+									//也可能`````
+									
+								}
+								
+								
+							}
+							//已经是匹配到string_code_out的末尾处了
+							else{
+								//string_code_in是一块代码段
+								System.out.println("code p:"+string_code_in);
+								//可能``````xxx``
+								//也可能``xxxxx`````
+								//也可能`````
+							}
+							
+						}
 					}
 					
 					/*
