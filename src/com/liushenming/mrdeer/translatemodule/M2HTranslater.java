@@ -66,6 +66,7 @@ public class M2HTranslater {
 	static final Pattern pattern_referdefine=Pattern.compile("\\[.+?\\]:.+\\s+\".+?\"");
 	static final Pattern pattern_code_greedy=Pattern.compile("[`]+.+[`]+");
 	static final Pattern pattern_code_scared=Pattern.compile("[`]+.+?[`]+");
+	static final Pattern pattern_code_op=Pattern.compile("[`]+");
 	
 	//行文本类
 	class LineText{
@@ -921,35 +922,27 @@ public class M2HTranslater {
 					 */
 					Matcher matcher_code_out=pattern_code_greedy.matcher(stackstring);
 					//贪婪型匹配
-					while(matcher_code_out.find()){
+					if(matcher_code_out.find()){
 						String string_code_out=matcher_code_out.group();
 						int start_out=matcher_code_out.start();
 						int end_out=matcher_code_out.end();
 						//勉强型匹配
 						Matcher matcher_code_in=pattern_code_scared.matcher(string_code_out);
-						while(matcher_code_in.find()){
+						int find_index=0;
+						while(matcher_code_in.find(find_index)){
 							String string_code_in=matcher_code_in.group();
-							System.out.println("find string_code_in:"+string_code_in);
 							int start_in=matcher_code_in.start();
 							int end_in=matcher_code_in.end();
-							if(end_in<string_code_out.length()){
-								if(string_code_out.charAt(end_in)==' '){
-									//string_code_in是一块代码段
-									//可能``````xxx``
-									//也可能``xxxxx`````
-									//也可能`````
-									System.out.println("code p:"+string_code_in);
-								}else{
+							/*if(end_in<string_code_out.length()){
+								if(string_code_out.charAt(end_in)!=' '){
 									boolean flag=true;
-									int end=end_in;
 									while(flag){
-										if(matcher_code_in.find(end-1)){
-											end=matcher_code_in.end();
-											System.out.println("end:"+end);
+										if(matcher_code_in.find(end_in-1)){
+											end_in=matcher_code_in.end();
 											//还没有扫描到string_code_out的末尾
-											if(end<string_code_out.length()){
-												if(string_code_out.charAt(end)==' '){
-													//找到了个代码段：start_in~end
+											if(end_in<string_code_out.length()){
+												if(string_code_out.charAt(end_in)==' '){
+													//找到了个代码段：start_in~end_in
 													break;
 												}
 												else{
@@ -959,33 +952,55 @@ public class M2HTranslater {
 											}
 											//end已经是string_code_out的末尾了
 											else{
-												//代码段：start_in~end
+												//代码段：start_in~end_in
 												break;
 											}
 										}
 									}
-									//break出来了
-									//start_in~end是一个代码段
-									string_code_in=string_code_out.substring(start_in, end);
-									System.out.println("code p:"+string_code_in);
-									//可能``````xxx``
-									//也可能``xxxxx`````
-									//也可能`````
-									
+									string_code_in=string_code_out.substring(start_in, end_in);	
+	
 								}
-								
-								
-							}
-							//已经是匹配到string_code_out的末尾处了
-							else{
-								//string_code_in是一块代码段
-								System.out.println("code p:"+string_code_in);
-								//可能``````xxx``
-								//也可能``xxxxx`````
-								//也可能`````
+							}*/
+							System.out.println("code p:"+string_code_in);
+							//string_code_in是一块代码段:start_in~end_in
+							//可能``````xxx``
+							//也可能``xxxxx`````
+							//也可能`````
+							if(pattern_code_op.matcher(string_code_in).matches()){
+								continue;
 							}
 							
+							int start=start_in;
+							int end=end_in-1;
+							while(string_code_out.charAt(start)=='`'&&
+									string_code_out.charAt(end)=='`'&&
+									start<end){
+								start++;
+								end--;
+							}
+							if(start>=end){
+								//string_code_in —> <code>string_code_out.charAt(start)</code>
+								string_code_in="<code>" + string_code_out.charAt(start) + "</code>";
+							}
+							if(string_code_out.charAt(start)!='`'){
+								if(string_code_out.charAt(end)!='`'){
+									//string_code_in -> <code>string_code_out.substring(start,end)</code>
+									string_code_in="<code>"+string_code_out.substring(start,end+1)+"</code>";
+								}else{
+									//不变化
+								}
+							}else if(string_code_out.charAt(end)!='`'){
+								//string_code_in -><code>string_code_out.substring(start,end)
+								string_code_in="<code>"+string_code_out.substring(start,end+1)+"</code>";
+							}
+							string_code_out=StringUtils.replace(string_code_out, 
+									string_code_in, start_in, end_in-1);
+							matcher_code_in=pattern_code_scared.matcher(string_code_out);
+							find_index=end_in;
 						}
+						//string_code_out是替换过<code>的串，应当替换回stackstring中
+						stackstring=StringUtils.replace(stackstring, string_code_out, start_out, end_out-1);
+						
 					}
 					
 					/*
