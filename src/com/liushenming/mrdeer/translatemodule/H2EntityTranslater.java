@@ -1,10 +1,66 @@
 package com.liushenming.mrdeer.translatemodule;
+
+import java.util.Iterator;
+import java.util.LinkedHashSet;
 /*
- * 将Html代码片段中所有的HTMl符号转换成HTML实体
+ * 灏咹tml浠ｇ爜鐗囨涓墍鏈夌殑HTMl绗﹀彿杞崲鎴怘TML瀹炰綋
  */
 
 public class H2EntityTranslater {
 	
+	//浼犲叆鐨勫瓧绗︿覆
+	private String string_origin="";
+	private LinkedHashSet<EntityRule> ruleSet;
 	
+	//origin->entity
+	private class EntityRule{
+		String origin;
+		String entity;
+		public EntityRule(String os,String es){
+			origin=os;
+			entity=es;
+		}
+	}
+	
+	public H2EntityTranslater(){
+		ruleSet=new LinkedHashSet<EntityRule>();
+		ruleSet.add(new EntityRule("&","&amp;"));
+		ruleSet.add(new EntityRule("<","&lt;"));
+		ruleSet.add(new EntityRule(">","&gt;"));
+		ruleSet.add(new EntityRule("\"","&quot;"));
+		ruleSet.add(new EntityRule(" ","&nbsp;"));
+		ruleSet.add(new EntityRule("漏","&copy;"));
+		ruleSet.add(new EntityRule("庐","&reg;"));
+		ruleSet.add(new EntityRule("'","&apos;"));
+	}
+	
+	public H2EntityTranslater(String string){
+		this();
+		if(string!=null){
+			string_origin=new String(string);
+		}
+	}
 
+	/**
+	 * 杞崲鏂规硶锛岃繑鍥炶浆鎹负html瀹炰綋鐨凷tring
+	 * @return
+	 */
+	public String translate(){
+		if(string_origin!=null&&ruleSet!=null){
+			Iterator<EntityRule> iter=ruleSet.iterator();
+			while(iter.hasNext()){
+				EntityRule er=iter.next();
+				string_origin=string_origin.replaceAll(er.origin, er.entity);
+			}
+		}
+		return string_origin;		
+	}
+	
+	public void loadString(String string){
+		if(string!=null){
+			string_origin=new String(string);
+		}else{
+			string_origin="";
+		}
+	}
 }
