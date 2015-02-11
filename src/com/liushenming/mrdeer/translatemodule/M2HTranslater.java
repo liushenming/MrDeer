@@ -929,6 +929,7 @@ public class M2HTranslater {
 						//勉强型匹配
 						Matcher matcher_code_in=pattern_code_scared.matcher(string_code_out);
 						int find_index=0;
+						H2EntityTranslater h2ttranlater=new H2EntityTranslater();
 						while(matcher_code_in.find(find_index)){
 							String string_code_in=matcher_code_in.group();
 							int start_in=matcher_code_in.start();
@@ -952,18 +953,25 @@ public class M2HTranslater {
 							}
 							if(start>=end){
 								//string_code_in —> <code>string_code_out.charAt(start)</code>
-								string_code_in="<code>" + string_code_out.charAt(start) + "</code>";
+								string_code_in=""+string_code_out.charAt(start);
+								h2ttranlater.loadString(string_code_in);
+								string_code_in="<code>" + h2ttranlater.translate() + "</code>";
 							}
-							if(string_code_out.charAt(start)!='`'){
+							else if(string_code_out.charAt(start)!='`'){
 								if(string_code_out.charAt(end)!='`'){
 									//string_code_in -> <code>string_code_out.substring(start,end)</code>
-									string_code_in="<code>"+string_code_out.substring(start,end+1)+"</code>";
+									string_code_in=string_code_out.substring(start,end+1);
+									h2ttranlater.loadString(string_code_in);
+									string_code_in="<code>"+h2ttranlater.translate()+"</code>";
 								}else{
 									//不变化
 								}
-							}else if(string_code_out.charAt(end)!='`'){
+							}
+							else if(string_code_out.charAt(end)!='`'){
 								//string_code_in -><code>string_code_out.substring(start,end)
-								string_code_in="<code>"+string_code_out.substring(start,end+1)+"</code>";
+								string_code_in=string_code_out.substring(start,end+1);
+								h2ttranlater.loadString(string_code_in);
+								string_code_in="<code>"+h2ttranlater.translate()+"</code>";
 							}
 							string_code_out=StringUtils.replace(string_code_out, 
 									string_code_in, start_in, end_in-1);

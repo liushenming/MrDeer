@@ -17,8 +17,8 @@ public class TestClass {
 	
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		//String filename="E:\\MDFiles\\html1.txt";
-		String filename="E:\\MDFiles\\hgfile.html";
+		String filename="E:\\MDFiles\\xueguo.txt";
+		//String filename="E:\\MDFiles\\hgfile.html";
 		try {
 			BufferedReader br=new BufferedReader(new FileReader(filename));
 			StringBuilder sb=new StringBuilder();
@@ -32,8 +32,8 @@ public class TestClass {
 			}
 			//此时markdown原始文本内容已经在string_get中了
 			//进行解析
-			//M2HTranslater translater=new M2HTranslater(sb.toString());
-			H2EntityTranslater translater=new H2EntityTranslater(sb.toString());
+			M2HTranslater translater=new M2HTranslater(sb.toString());
+			//H2EntityTranslater translater=new H2EntityTranslater(sb.toString());
 			String string_html=translater.translate();
 			if(VDBG)
 			{
