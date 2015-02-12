@@ -17,7 +17,7 @@ public class TestClass {
 	
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		String filename="E:\\MDFiles\\xueguo.txt";
+		String filename="E:\\MDFiles\\html1.txt";
 		//String filename="E:\\MDFiles\\hgfile.html";
 		try {
 			BufferedReader br=new BufferedReader(new FileReader(filename));

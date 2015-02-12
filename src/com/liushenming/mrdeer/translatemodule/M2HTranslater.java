@@ -67,6 +67,8 @@ public class M2HTranslater {
 	static final Pattern pattern_code_greedy=Pattern.compile("[`]+.+[`]+");
 	static final Pattern pattern_code_scared=Pattern.compile("[`]+.+?[`]+");
 	static final Pattern pattern_code_op=Pattern.compile("[`]+");
+	//以四个space或一个tab开始的代码行
+	static final Pattern pattern_codeline=Pattern.compile("^(\\t|[ ]{4}).*[^ \\t]+.*");
 	
 	//行文本类
 	class LineText{
@@ -80,6 +82,7 @@ public class M2HTranslater {
 		boolean islist_head;	//是否是某个列表的第一个
 		int list_tailnum;	//列表的尾数量
 		LinkedList<Boolean> list_tailstack;	//列表的尾栈
+		boolean isCode;	//是代码行
 		
 		//创建时只能传入文本内容。
 		LineText(String c){
@@ -89,6 +92,11 @@ public class M2HTranslater {
 			type=judgeType(content);
 			caculateListParam();
 			isblockquote_end=false;
+			if(pattern_codeline.matcher(c).matches()){
+				isCode=true;
+			}else{
+				isCode=false;
+			}
 		}
 		
 		//计算list相关的参数
@@ -1149,9 +1157,7 @@ public class M2HTranslater {
 						find_index=start_index+url_string.length();
 						matcher=pattern_squarebracket2.matcher(stackstring);
 					}
-					
-					
-					
+										
 					stackstring=stackstring+stackendstring;	//拼接上</..></..>
 					if(linetext.type==TEXTTYPE_NORMAL){
 						stackstring="<p>"+stackstring+"</p>";
@@ -1201,6 +1207,10 @@ public class M2HTranslater {
 								}
 							}
 						}
+					}
+					if(linetext.isCode){
+						H2EntityTranslater h2etranslater=new H2EntityTranslater(stackstring);
+						stackstring="<code>"+h2etranslater.translate()+"</code>";
 					}
 						
 					if(VDBG){

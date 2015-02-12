@@ -10,16 +10,16 @@ public class EasyTest {
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
 		//\\[.+?\\]
-		/*Pattern pattern=Pattern.compile("[`]+.+?[`]+");
-		String s="``aa``vv``cc`";
+		Pattern pattern=Pattern.compile("^(\\t|[ ]{4}.*[^ \\t]+.*)");
+		String s="     ";
 		Matcher m=pattern.matcher(s);
-		/*if(m.find()){
+		if(m.find()){
 			System.out.println("success");
 			//System.out.println("start:"+m.start());
 			//System.out.println("end:"+m.end());
 		}else{
 			System.out.println("fail");
-		}*/
+		}
 		/*if(m.find(1)){
 			String s_get=m.group();
 			System.out.println(s_get+",s:"+m.start()+",e:"+m.end());
