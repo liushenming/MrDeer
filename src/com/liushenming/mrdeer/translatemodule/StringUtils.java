@@ -1,4 +1,8 @@
-package com.liushenming.mrdeer.utils;
+package com.liushenming.mrdeer.translatemodule;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 
 public class StringUtils {
 
@@ -72,4 +76,17 @@ public class StringUtils {
 		return string_board;
 	}
 	
+	/**
+	 * 从指定的path中的文件中读取String
+	 */
+	public static String getStringFromFile(String path) throws IOException{
+		BufferedReader br=new BufferedReader(new FileReader(path));
+		StringBuilder sb=new StringBuilder();
+		String string_get;
+		while((string_get=br.readLine())!=null){
+			sb.append(string_get+"\n");
+		}
+		br.close();
+		return sb.toString();
+	}
 }

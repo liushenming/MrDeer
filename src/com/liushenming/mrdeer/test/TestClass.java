@@ -1,10 +1,14 @@
-package com.liushenming.mrdeer.translatemodule;
+package com.liushenming.mrdeer.test;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+
+import com.liushenming.mrdeer.translatemodule.HtmlGenerator;
+import com.liushenming.mrdeer.translatemodule.M2HTranslater;
+import com.liushenming.mrdeer.translatemodule.StringUtils;
 
 /*
  * 这是一个测试类
@@ -17,23 +21,11 @@ public class TestClass {
 	
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		String filename="E:\\MDFiles\\xueguo.txt";
-		//String filename="E:\\MDFiles\\hgfile.html";
+		String filename="E:\\MDFiles\\html1.txt";
+		String mdString;
 		try {
-			BufferedReader br=new BufferedReader(new FileReader(filename));
-			StringBuilder sb=new StringBuilder();
-			//System.out.print("sb length="+sb.length());
-			String string_get;
-			while((string_get=br.readLine())!=null){
-				sb.append(string_get+"\n");
-			}
-			if(VDBG){
-				System.out.println("main(),sb:\n"+sb.toString());
-			}
-			//此时markdown原始文本内容已经在string_get中了
-			//进行解析
-			M2HTranslater translater=new M2HTranslater(sb.toString());
-			//H2EntityTranslater translater=new H2EntityTranslater(sb.toString());
+			mdString = StringUtils.getStringFromFile(filename);
+			M2HTranslater translater=new M2HTranslater(mdString);
 			String string_html=translater.translate();
 			if(VDBG)
 			{
@@ -51,13 +43,10 @@ public class TestClass {
 					System.out.println("html文件生成失败");
 				}
 			}			
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-	}
-
+		
+	} 
 }

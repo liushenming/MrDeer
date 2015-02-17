@@ -10,8 +10,6 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.liushenming.mrdeer.utils.StringUtils;
-
 /*
  * Markdown文本到Html文本的转换器
  */

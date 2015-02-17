@@ -1,9 +1,9 @@
-package com.liushenming.mrdeer.translatemodule;
+package com.liushenming.mrdeer.test;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.liushenming.mrdeer.utils.StringUtils;
+import com.liushenming.mrdeer.translatemodule.StringUtils;
 
 public class EasyTest {
 
