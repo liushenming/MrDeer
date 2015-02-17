@@ -16,7 +16,7 @@ public class PathTitleUnit {
 	//xxxxx
 	private static final Pattern pattern_string_nospace=Pattern.compile("[^\\s]+");
 	//"xx xx"
-	private static final Pattern pattern_string_quot=Pattern.compile("\".*\"");
+	private static final Pattern pattern_string_quot=Pattern.compile("\".*?\"");
 		
 	public PathTitleUnit(String path,String title){
 		this.mPath=path;
