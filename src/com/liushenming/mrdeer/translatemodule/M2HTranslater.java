@@ -252,6 +252,7 @@ public class M2HTranslater {
 		//刚扫描到一个字符时直接创建一个StackElement，并且在构造函数中判断类型
 		StackElement(char c,boolean istrans){
 			content=c+"";
+			isTransChar=istrans;
 			type=judgeType(c, istrans);
 		}
 		
@@ -704,6 +705,9 @@ public class M2HTranslater {
 							char letter_next=textstring.charAt(lineindex+1);
 							//如果下一个字符可以和\拼成转义字符
 							if(isTransChar(letter_next)){
+								if(VVDBG){
+									System.out.println("magic_stack转义字符："+letter_next);	
+								}
 								lineindex++;
 								se_add=new StackElement(letter_next,true);
 							}
@@ -719,11 +723,24 @@ public class M2HTranslater {
 						se_add=new StackElement(letter,false);
 					}
 					
-					
 					StackElement se_top=magic_stack.peek();	//栈顶元素
 					while(true){
+						//是转义字符
+						if(se_add.isTransChar){
+							if(se_top!=null&&se_top.type==ELEMENTTYPE_TEXT){
+								String newstring=se_top.content+se_add.content;
+								magic_stack.pop();
+								se_add=new StackElement(ELEMENTTYPE_TEXT,newstring);
+								magic_stack.push(se_add);
+								break;
+							}else{
+								se_add=new StackElement(ELEMENTTYPE_TEXT,se_add.content);
+								magic_stack.push(se_add);
+								break;
+							}
+						}
 						//压空格栈元素
-						if(se_add.type==ELEMENTTYPE_SPACE){
+						else if(se_add.type==ELEMENTTYPE_SPACE){
 							if(se_top==null){
 								//直接无视文本行最前的空格
 								break;
@@ -1047,6 +1064,8 @@ public class M2HTranslater {
 							stackendstring="</h6>"+stackendstring;
 						}
 					}else if(type_get==ELEMENTTYPE_TEXT){
+						stackstring+=content_get;
+					}else{
 						stackstring+=content_get;
 					}
 					flag_isstackbottom=false;	//栈底已经处理过了，下一个元素不是栈底
