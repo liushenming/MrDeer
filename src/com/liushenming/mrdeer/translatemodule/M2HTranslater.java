@@ -2,6 +2,7 @@ package com.liushenming.mrdeer.translatemodule;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.ListIterator;
@@ -22,6 +23,7 @@ public class M2HTranslater {
 	//<行号,行字符串>
 	private ArrayList<LineText> al_LineString;	//行文本
 	private LinkedList<Boolean> stack_listtail;	//列表项的尾巴栈
+	private HashSet<Character> set_transchar;	//转义字符集合	
 	private HashMap<String,PathTitleUnit> map_referdefine;	//存放[id]:xxx "xxxx"
 	public boolean DBG=false;
 	public boolean VDBG=false;
@@ -217,6 +219,23 @@ public class M2HTranslater {
 	private final static int ELEMENTTYPE_OP_5JING=12;	//#####
 	private final static int ELEMENTTYPE_OP_6JING=13;	//######
 	private final static int ELEMENTTYPE_OP_BR=14;	//\n
+	
+	private final static int ELEMENTTYPE_TRANSCHAR_XIEGANG=100;	//'\\'
+	private final static int ELEMENTTYPE_TRANSCHAR_FANYING=101;	//'\`'
+	private final static int ELEMENTTYPE_TRANSCHAR_STAR=102;	//'\*'
+	private final static int ELEMENTTYPE_TRANSCHAR_SB=103;	//'\_'
+	private final static int ELEMENTTYPE_TRANSCHAR_LEFTHUA=104;	//'\{'
+	private final static int ELEMENTTYPE_TRANSCHAR_RIGHTHUA=105;	//'\}'
+	private final static int ELEMENTTYPE_TRANSCHAR_LEFTFANG=107;	//'\['
+	private final static int ELEMENTTYPE_TRANSCHAR_RIGHTFANG=108;	//'\]'
+	private final static int ELEMENTTYPE_TRANSCHAR_LEFTYUAN=109;	//'\('
+	private final static int ELEMENTTYPE_TRANSCHAR_RIGHTYUAN=110;	//'\)'
+	private final static int ELEMENTTYPE_TRANSCHAR_JING=111;	//'\#'
+	private final static int ELEMENTTYPE_TRANSCHAR_JIA=112;	//'\+'
+	private final static int ELEMENTTYPE_TRANSCHAR_JIAN=113;	//'\-'
+	private final static int ELEMENTTYPE_TRANSCHAR_DOT=114;	//'\.'
+	private final static int ELEMENTTYPE_TRANSCHAR_GANTAN=115;	//'\!'
+	
 	//........
 	
 	
@@ -224,43 +243,100 @@ public class M2HTranslater {
 	class StackElement{
 		int type;	//他是属于操作符还是文本
 		String content;	//具体的内容
+		boolean isTransChar;	//是否是转义字符
 		StackElement(int t,String c){
 			type=t;
 			content=c;
 		}
 		
 		//刚扫描到一个字符时直接创建一个StackElement，并且在构造函数中判断类型
-		StackElement(char c){
+		StackElement(char c,boolean istrans){
 			content=c+"";
-			type=judgeType(c);
+			type=judgeType(c, istrans);
 		}
 		
 		//判断一个字符是什么类型
-		int judgeType(char c)
+		int judgeType(char c,boolean istrans)
 		{
 			int t=ELEMENTTYPE_UNKNOW;
-			switch(c){
-			case ' ':
-				t=ELEMENTTYPE_SPACE;
-				break;
-			case '*':
-				t=ELEMENTTYPE_OP_STAR;
-				break;
-			case '_':
-				t=ELEMENTTYPE_OP_SB;
-				break;
-			case '#':
-				t=ELEMENTTYPE_OP_JING;
-				break;
-			case '\n':
-				t=ELEMENTTYPE_OP_BR;
-				break;
-			case '\t':
-				t=ELEMENTTYPE_OP_TAB;
-				break;
-			default:
-				t=ELEMENTTYPE_TEXT;
-				break;	
+			//是转义字符
+			if(istrans){
+				switch(c){
+				case '\\':
+					t=ELEMENTTYPE_TRANSCHAR_XIEGANG;
+					break;
+				case '`':
+					t=ELEMENTTYPE_TRANSCHAR_FANYING;
+					break;
+				case '*':
+					t=ELEMENTTYPE_TRANSCHAR_STAR;
+					break;
+				case '_':
+					t=ELEMENTTYPE_TRANSCHAR_SB;
+					break;
+				case '{':
+					t=ELEMENTTYPE_TRANSCHAR_LEFTHUA;
+					break;
+				case '}':
+					t=ELEMENTTYPE_TRANSCHAR_RIGHTHUA;
+					break;
+				case '[':
+					t=ELEMENTTYPE_TRANSCHAR_LEFTFANG;
+					break;
+				case ']':
+					t=ELEMENTTYPE_TRANSCHAR_RIGHTFANG;
+					break;
+				case '(':
+					t=ELEMENTTYPE_TRANSCHAR_LEFTYUAN;
+					break;
+				case ')':
+					t=ELEMENTTYPE_TRANSCHAR_RIGHTYUAN;
+					break;
+				case '#':
+					t=ELEMENTTYPE_TRANSCHAR_JING;
+					break;
+				case '+':
+					t=ELEMENTTYPE_TRANSCHAR_JIA;
+					break;
+				case '-':
+					t=ELEMENTTYPE_TRANSCHAR_JIAN;
+					break;
+				case '.':
+					t=ELEMENTTYPE_TRANSCHAR_DOT;
+					break;
+				case '!':
+					t=ELEMENTTYPE_TRANSCHAR_GANTAN;
+					break;
+				default:
+					t=ELEMENTTYPE_TEXT;
+					break;
+				}
+			}
+			else
+			{
+				switch(c){
+				case ' ':
+					t=ELEMENTTYPE_SPACE;
+					break;
+				case '*':
+					t=ELEMENTTYPE_OP_STAR;
+					break;
+				case '_':
+					t=ELEMENTTYPE_OP_SB;
+					break;
+				case '#':
+					t=ELEMENTTYPE_OP_JING;
+					break;
+				case '\n':
+					t=ELEMENTTYPE_OP_BR;
+					break;
+				case '\t':
+					t=ELEMENTTYPE_OP_TAB;
+					break;
+				default:
+					t=ELEMENTTYPE_TEXT;
+					break;	
+				}
 			}
 			return t;
 		}
@@ -280,7 +356,35 @@ public class M2HTranslater {
 		}
 		stack_listtail=new LinkedList<Boolean>();
 		map_referdefine=new HashMap<String,PathTitleUnit>();
-		
+		//将转义字符添加到转义集合中
+		set_transchar=new HashSet<Character>();
+		set_transchar.add('\\');
+		set_transchar.add('`');
+		set_transchar.add('*');
+		set_transchar.add('_');
+		set_transchar.add('{');
+		set_transchar.add('}');
+		set_transchar.add('[');
+		set_transchar.add(']');
+		set_transchar.add('(');
+		set_transchar.add(')');
+		set_transchar.add('#');
+		set_transchar.add('+');
+		set_transchar.add('-');
+		set_transchar.add('.');
+		set_transchar.add('!');
+	}
+	
+	/*
+	 * 判断一个字符是否可以被转义
+	 * 例如： isTransChar(*)  return true;
+	 * 		isTransChar(a)	return false;
+	 */
+	private boolean isTransChar(char c){
+		if(set_transchar.contains(new Character(c))){
+			return true;
+		}
+		return false;
 	}
 	
 	//将origin_string切割，分到map_string中
@@ -591,7 +695,31 @@ public class M2HTranslater {
 				//step2:最终把栈处理一下
 				while(lineindex<textstring.length()){
 					char letter=textstring.charAt(lineindex);
-					StackElement se_add=new StackElement(letter);
+					//此处判断是否是'\'
+					//若是，则为转义字符，读取下一个字符，若能拼成转义则转义
+					//若不是，则继续。
+					StackElement se_add;
+					if(letter=='\\'){
+						if(lineindex+1<textstring.length()){
+							char letter_next=textstring.charAt(lineindex+1);
+							//如果下一个字符可以和\拼成转义字符
+							if(isTransChar(letter_next)){
+								lineindex++;
+								se_add=new StackElement(letter_next,true);
+							}
+							//否则不管，'\'只是个普通的字符
+							else{
+								se_add=new StackElement(letter,false);
+							}
+						}
+						else{
+							se_add=new StackElement(letter,false);
+						}
+					}else{
+						se_add=new StackElement(letter,false);
+					}
+					
+					
 					StackElement se_top=magic_stack.peek();	//栈顶元素
 					while(true){
 						//压空格栈元素
