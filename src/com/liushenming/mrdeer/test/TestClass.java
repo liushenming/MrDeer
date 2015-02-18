@@ -1,9 +1,5 @@
 package com.liushenming.mrdeer.test;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 
 import com.liushenming.mrdeer.translatemodule.HtmlGenerator;
@@ -21,7 +17,7 @@ public class TestClass {
 	
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		String filename="E:\\MDFiles\\html1.txt";
+		String filename="E:\\MDFiles\\xueguo.txt";
 		String mdString;
 		try {
 			mdString = StringUtils.getStringFromFile(filename);

@@ -422,15 +422,21 @@ public class M2HTranslater {
 				}
 				if(lt_next==null){
 					if(lt_curr.type==TEXTTYPE_LIST){
+						lt_curr.islist_head=true;
 						lt_curr.list_tailnum=lt_curr.list_len;
 						lt_curr.list_tailstack=new LinkedList<Boolean>();
+						stack_listtail.push(lt_curr.islist_order);
 						//向文本行的list_tailstack成员中加入Boolean对象,并且结构于stack_listtail一致
 						for(int j=0;j<lt_curr.list_tailnum;j++){
 							lt_curr.list_tailstack.addLast(stack_listtail.pop());
 						}
-						
 					}
 					break;
+				}
+				if(lt_curr.type==TEXTTYPE_LIST&&i==0){
+					lt_curr.islist_head=true;
+					lt_curr.list_len=1;	//第一个列表项的list_len必须是1
+					stack_listtail.push(lt_curr.islist_order);
 				}
 				//如果当前文本行是一个普通文本/换行文本，并且下一个文本行是====或者是-----
 				if((lt_curr.type==TEXTTYPE_NORMAL
@@ -498,8 +504,9 @@ public class M2HTranslater {
 				if(lt_curr.type==TEXTTYPE_LIST&&lt_next.type!=TEXTTYPE_LIST){
 					lt_curr.list_tailnum=lt_curr.list_len;
 					lt_curr.list_tailstack=new LinkedList<Boolean>();
+					stack_listtail.push(lt_curr.islist_order);
 					for(int j=0;j<lt_curr.list_tailnum;j++){
-						lt_curr.list_tailstack.addLast(stack_listtail.pop());
+						lt_curr.list_tailstack.addLast(stack_listtail.pop());		
 					}
 				}
 			}
