@@ -439,45 +439,58 @@ public class M2HTranslator {
 	
 	//split the origin_string into mLineString.
 	private boolean splitString(){
-		//把map_string创建出来，如果已经存在了，就清空
+		//create the mLineString.
 		if(mLineString==null){
 			mLineString=new ArrayList<LineText>();
-		}
-		else{
+		}else{
 			mLineString.clear();
 		}
+		
 		if(origin_string==null){
 			return false;
-		}
-		else{
+		}else{
+			//split the origin_string by "\n"
 			String[] string_arr=origin_string.split("\n");
 			if(VDBG){
 				System.out.println("splitString(),string_arr.length()=="+string_arr.length);
 			}
-			//第一次扫描
-			//一行一行文本划分到了al_LineString里，同时判断出类型
+			
+			/*
+			 * SCAN#1:
+			 * add the LineText into mLineString.
+			 * judge the type of LineText at the same time.
+			 */
 			for(int i=0;i<string_arr.length;i++){
 				if(VVDBG){
 					System.out.println("splitString!");
 				}
 				mLineString.add(new LineText(string_arr[i]));
 			}
-			//此时已经初步按照\n将整个大段文本分开，并且标记了类型。
-			//需要进一步整合行文本，使其以段落为行文本的单位
-			//第二次扫描,去除多余的空白行，将TEXTTYPE_TITLELINE的行删掉
+
+			/*
+			 * SCAN#2:
+			 * remove the extra space lines and all the title-format lines.
+			 * (      ,====,-----)
+			 */
 			for(int i=0;i<mLineString.size();i++){
-				LineText lt_curr=mLineString.get(i);	//当前的LineText
-				LineText lt_next=null;	//下一个text
+				//the current LineText
+				LineText lt_curr=mLineString.get(i);
+				//the next LineText
+				LineText lt_next=null;
 				if(i+1<mLineString.size()){
 					lt_next=mLineString.get(i+1);
 				}
 				if(lt_next==null){
+					//at the end of the mLineString.
 					if(lt_curr.type==TEXTTYPE_LIST){
 						lt_curr.islist_head=true;
 						lt_curr.list_tailnum=lt_curr.list_len;
 						lt_curr.list_tailstack=new LinkedList<Boolean>();
 						mListTail.push(lt_curr.islist_order);
-						//向文本行的list_tailstack成员中加入Boolean对象,并且结构于stack_listtail一致
+						/*
+						 * move the element from mListTail to lt_curr.list_tailstack
+						 * and the orders of the element are same.
+						 */
 						for(int j=0;j<lt_curr.list_tailnum;j++){
 							lt_curr.list_tailstack.addLast(mListTail.pop());
 						}
@@ -485,36 +498,43 @@ public class M2HTranslator {
 					break;
 				}
 				if(lt_curr.type==TEXTTYPE_LIST&&i==0){
+					//the first LineText is a list text
 					lt_curr.islist_head=true;
-					lt_curr.list_len=1;	//第一个列表项的list_len必须是1
+					lt_curr.list_len=1;
+					/*
+					 * the Boolean value of the lt_curr should 
+					 * be pushed into the mListTail.
+					 */
 					mListTail.push(lt_curr.islist_order);
 				}
-				//如果当前文本行是一个普通文本/换行文本，并且下一个文本行是====或者是-----
-				if((lt_curr.type==TEXTTYPE_NORMAL
-						||lt_curr.type==TEXTTYPE_ENDNORMALTEXT)&&
+				if((lt_curr.type==TEXTTYPE_NORMAL||
+						lt_curr.type==TEXTTYPE_ENDNORMALTEXT)&&
 						(lt_next.type==TEXTTYPE_TITLELINE||
 						lt_next.type==TEXTTYPE_SBLINE_CONSECUTIVE)){
-					//将当前文本的type改成TEXTTYPE_TITLE
+					//next line is title-format line and it will be removed then. 
+					//the title-format line will play a role.
 					lt_curr.type=TEXTTYPE_TITLE_EQUAL;
-					lt_curr.blockquote_depth=0;	//这类文本行不能位于引用中
-					//===/----这种TEXTTYPE_TITLELINE文本行已经失去他们的价值，删掉
+					//the depth of the (Block Quote).
+					lt_curr.blockquote_depth=0;	
+					//now the title-format will be removed.
 					mLineString.remove(i+1);
 					continue;
 				}
-				//当前行，下一行都是空白行
 				if(lt_curr.type==TEXTYPE_SPACELINE&&
 						lt_next.type==TEXTYPE_SPACELINE){
-					//删掉下面一行
+					//now remove the extra space line and go one line back .
 					mLineString.remove(i+1);
-					//退回一格，下次循环仍要从本空白行开始
 					i--;
 					continue;
 				}
-				//当前行是个文本且可能影响下面的行，因为它是具有引用深度的
 				if((lt_curr.type==TEXTTYPE_NORMAL||
 						lt_curr.type==TEXTTYPE_ENDNORMALTEXT||
 						lt_curr.type==TEXTTYPE_TITLE_JING)&&
 						lt_curr.blockquote_depth>0){
+					/*
+					 * the current line has depth of (Block Quote),
+					 * and the blockquote_depth will be trimmed now. 
+					 */
 					if(lt_next.type==TEXTYPE_SPACELINE){
 						lt_curr.isblockquote_end=true;
 					}else if((lt_next.type==TEXTTYPE_NORMAL||
@@ -522,18 +542,17 @@ public class M2HTranslator {
 							lt_next.type==TEXTTYPE_TITLE_JING)
 							&&lt_next.blockquote_depth<lt_curr.blockquote_depth){
 						lt_next.blockquote_depth=lt_curr.blockquote_depth;
-						lt_next.isblockquote_start=false;	//下一行文本不是引用开始
+						lt_next.isblockquote_start=false;
 					}
 				}
-				//处理列表第一个项
 				if(lt_curr.type!=TEXTTYPE_LIST&&lt_next.type==TEXTTYPE_LIST){
+					//next line is the head of a list.
 					lt_next.islist_head=true;
-					lt_next.list_len=1;	//第一个列表项的list_len必须是1
+					lt_next.list_len=1;
 					mListTail.push(lt_next.islist_order);
 				}
-				//当前文本和下一文本都是list
 				if(lt_curr.type==TEXTTYPE_LIST&&lt_next.type==TEXTTYPE_LIST){
-					//第一行文本就是列表项
+					//the current line and the next line are all lists.
 					if(i==0){
 						lt_curr.islist_head=true;
 						lt_curr.list_len=1;
@@ -551,8 +570,8 @@ public class M2HTranslator {
 						}
 					}
 				}
-				//处理列表最后一个项
 				if(lt_curr.type==TEXTTYPE_LIST&&lt_next.type!=TEXTTYPE_LIST){
+					//we are now at the tail of a list.
 					lt_curr.list_tailnum=lt_curr.list_len;
 					lt_curr.list_tailstack=new LinkedList<Boolean>();
 					mListTail.push(lt_curr.islist_order);
@@ -568,93 +587,95 @@ public class M2HTranslator {
 			}
 			
 			
-			
-			//第三次扫描，将同一个段落的文本合并成一行
+			/*
+			 * SCAN#3:
+			 * merge the LineTexts which are in the same unit.
+			 */
 			for(int i=0;i<mLineString.size();i++){
-				LineText lt_curr=mLineString.get(i);	//当前的LineText
-				LineText lt_next=null;	//下一个text
+				LineText lt_curr=mLineString.get(i);
+				LineText lt_next=null;
 				if(i+1<mLineString.size()){
 					lt_next=mLineString.get(i+1);
 				}
 				if(lt_next==null){
 					break;
 				}
-				//当前是普通文本，下一行是也是普通文本/TEXTTYPE_ENDNORMALTEXT
 				if(lt_curr.type==TEXTTYPE_NORMAL&&
 						(lt_next.type==TEXTTYPE_NORMAL||
 						lt_next.type==TEXTTYPE_ENDNORMALTEXT)){
-					
-					//当前行不在引用中，下一行在引用中
 					if(lt_curr.blockquote_depth==0&&lt_next.blockquote_depth>0){
-						//这一行就停止了
+						//the next line is in a (Block Quote).
 						continue;
 					}
-					//都不在引用中
 					if(lt_curr.blockquote_depth==0&&lt_next.blockquote_depth==0){
-						//合并两个文本到当前的LineText,删除next
+						/*
+						 * the current line and the next line are not in the 
+						 * Block Quote.merge the next line into the current line
+						 * and remove the next one.
+						 */
 						lt_curr.content+=lt_next.content;
 						lt_curr.type=lt_next.type;
 						mLineString.remove(i+1);
 						i--;
 						continue;
 					}
-					//都在引用中
-					if(lt_curr.blockquote_depth>0){
-						//当前行是引用开始
+					if(lt_curr.blockquote_depth>0&&lt_next.blockquote_depth>0){
+						//the current and next lines are all in (Block Quote).
 						if(lt_curr.isblockquote_start==true){
+							//the current line is the start of the Block Quote.
+							//add a '\t' at the beginning at the current line text.
 							lt_curr.content="\t"+lt_curr.content;
 						}
-						//如果下一行是个引用开始，要加入‘\t\n’
 						if(lt_next.isblockquote_start==true){
+							//if next line is the start of the Block Quote.
+							//add a '\n\t' at the beginning at the next line text.
+							//the  merge the next line to current line.
 							lt_curr.content+="\n\t"+lt_next.content;
 						}else{
 							lt_curr.content+=lt_next.content;
 						}
-						//该行的isblockquote_start属性已经发挥过了价值了，应该置false
+						//reset the islockquote_start to false.
 						lt_curr.isblockquote_start=false;
 						lt_curr.type=lt_next.type;
-						//深度只会越变越大
+						//set the blockquote_depth of current line with next line.
 						lt_curr.blockquote_depth=lt_next.blockquote_depth;
 						mLineString.remove(i+1);
 						i--;
 						continue;
-					}
-					
+					}	
 				}
-				//当前是TEXTTYPE_ENDNORMALTEXT，下一行是也是普通文本/TEXTTYPE_ENDNORMALTEXT
-				if((lt_curr.type==TEXTTYPE_ENDNORMALTEXT)
-						&&(lt_next.type==TEXTTYPE_NORMAL||
+				if((lt_curr.type==TEXTTYPE_ENDNORMALTEXT)&&
+						(lt_next.type==TEXTTYPE_NORMAL||
 						lt_next.type==TEXTTYPE_ENDNORMALTEXT)){
-					//合并两个文本到当前的LineText,以\n间隔,删除next
+					//similar with the above if().
 					if(lt_curr.blockquote_depth==0&&lt_next.blockquote_depth>0){
-						//这一行就停止了
 						continue;
 					}
-					//都不在引用中
 					if(lt_curr.blockquote_depth==0&&lt_next.blockquote_depth==0){
-						//合并两个文本到当前的LineText,删除next
+						//add '\n' to the beginning of the next line
+						//then merge the current and the next line text.
 						lt_curr.content+="\n"+lt_next.content;
 						lt_curr.type=lt_next.type;
 						mLineString.remove(i+1);
 						i--;
 						continue;
 					}
-					//都在引用中
 					if(lt_curr.blockquote_depth>0){
-						//当前行是引用开始
 						if(lt_curr.isblockquote_start==true){
+							//add '\t' to the beginning of the current line.
 							lt_curr.content="\t"+lt_curr.content;
 						}
-						//如果下一行是个引用开始，要加入‘\t\n’
 						if(lt_next.isblockquote_start==true){
+							//next line is the start of a block quote.
+							//add "\t\n" to the beginning of the next line.
 							lt_curr.content+="\n\t"+lt_next.content;
 						}else{
 							lt_curr.content+="\n"+lt_next.content;
 						}
 						lt_curr.type=lt_next.type;
-						//该行的isblockquote_start属性已经发挥过了价值了，应该置false
+						//reset the isblockquote_start to false.
 						lt_curr.isblockquote_start=false;
-						//深度只会越变越大
+						//set the blockquote_depth of current line with next line.
 						lt_curr.blockquote_depth=lt_next.blockquote_depth;
 						mLineString.remove(i+1);
 						i--;
@@ -662,9 +683,9 @@ public class M2HTranslator {
 					}
 					
 				}
-				//#标题文本则自己判断要不要在开头加上<blockquote>
 				if(lt_curr.type==TEXTTYPE_TITLE_JING&&
 						lt_curr.isblockquote_start==true){
+					//TEXTTYPE_TITLE_JING should add '\t' to the beginning.
 					lt_curr.content="\t"+lt_curr.content;
 				}
 			}
@@ -672,12 +693,14 @@ public class M2HTranslator {
 				System.out.println("第三次扫描以后，the al_LineString:");
 				printLineStrings();
 			}
-			
 			return true;
 		}
 	}
 	
-	//构造了M2HTranslate对象以后调用translate()进行转换
+	/**
+	 * the core method of M2HTranslator.
+	 * 
+	 */
 	public String translate(){
 		//将所有的referdefine类型的短语全部提取出来，放置到map_referdefine中
 		Matcher matcher_referdefine=pattern_referdefine.matcher(origin_string);
