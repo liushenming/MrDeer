@@ -3,7 +3,7 @@ package com.liushenming.mrdeer.test;
 import java.io.IOException;
 
 import com.liushenming.mrdeer.translatemodule.HtmlGenerator;
-import com.liushenming.mrdeer.translatemodule.M2HTranslater;
+import com.liushenming.mrdeer.translatemodule.M2HTranslator;
 import com.liushenming.mrdeer.translatemodule.StringUtils;
 
 /*
@@ -17,11 +17,11 @@ public class TestClass {
 	
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
-		String filename="E:\\MDFiles\\xueguo.txt";
+		String filename="E:\\MDFiles\\html1.txt";
 		String mdString;
 		try {
 			mdString = StringUtils.getStringFromFile(filename);
-			M2HTranslater translater=new M2HTranslater(mdString);
+			M2HTranslator translater=new M2HTranslator(mdString);
 			String string_html=translater.translate();
 			if(VDBG)
 			{

@@ -11,48 +11,74 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /*
- * Markdown文本到Html文本的转换器
+ * Translator that translate MarkDown(.md) into HTML(.html)
  */
-public class M2HTranslater {
+public class M2HTranslator {
 
-	//通过构造器传进来的原始字符串
+	//the original String get from constructor
 	private String origin_string;
 	
-	//<行号,行字符串>
-	private ArrayList<LineText> al_LineString;	//行文本
-	private LinkedList<Boolean> stack_listtail;	//列表项的尾巴栈
-	private HashSet<Character> set_transchar;	//转义字符集合	
-	private HashMap<String,PathTitleUnit> map_referdefine;	//存放[id]:xxx "xxxx"
+	//the origin_string will be stored in mLineString in some specified rules.
+	private ArrayList<LineText> mLineString;	
+	//mListTail stores the list tail(true:</ol>,false:</ul>).
+	private LinkedList<Boolean> mListTail;
+	//mEscapeCharSet stores all the (Escape Sequence).
+	private HashSet<Character> mEscapeCharSet;
+	//mReferDefineMap stores all the (Reference Define) information into Map<id,(path,title)>
+	private HashMap<String,PathTitleUnit> mReferDefineMap;
+	
 	public boolean DBG=false;
 	public boolean VDBG=false;
 	public boolean VVDBG=true;
 	
 	/*
-	 * 文本的类型
+	 * below are the text types of String stored in mLineString 
 	 */
-	private final static int TEXTTYPE_NORMAL=10;  //普通文本类型
-	private final static int TEXTYPE_SPACELINE=11;	//空白的文本类型
-	private final static int TEXTTYPE_TITLELINE=12;	//=====
-	private final static int TEXTTYPE_TITLE_JING=13;	//标题，标题类似于独立的段(##)
-	private final static int TEXTTYPE_TITLE_EQUAL=14;	//标题，标题类似于独立的段(==)
-	private final static int TEXTTYPE_SBLINE_CONTINUOUS=15;//---连续的 
-	private final static int TEXTTYPE_SBLINE_DISCONTINUOUS=16;	//- --，包含空格和-
-	private final static int TEXTTYPE_ENDNORMALTEXT=17;	//最后是两空格的普通文本类型
-	private final static int TEXTTYPE_STARLINE=18;	//** *，可以有空格\
-	private final static int TEXTTYPE_LIST=19;	//列表类型的文本行
+	//normal
+	private final static int TEXTTYPE_NORMAL=10;  
+	//space line 
+	private final static int TEXTYPE_SPACELINE=11;	
+	//title-format line:=====
+	private final static int TEXTTYPE_TITLELINE=12;	
+	//title line titled by "##"
+	private final static int TEXTTYPE_TITLE_JING=13;
+	//title line titled by "==="
+	private final static int TEXTTYPE_TITLE_EQUAL=14;	
+	//consecutive "-":------
+	private final static int TEXTTYPE_SBLINE_CONSECUTIVE=15;
+	//discontinuous "-":- - - --
+	private final static int TEXTTYPE_SBLINE_DISCONTINUOUS=16;
+	//normal text ends with two space
+	private final static int TEXTTYPE_ENDNORMALTEXT=17;
+	//star line:* *  **
+	private final static int TEXTTYPE_STARLINE=18;
+	//text line in a list
+	private final static int TEXTTYPE_LIST=19;
 	
-	//用于内部类LineText判断文本类型用
+	/*
+	 * Patterns use for recognizing the text type 
+	 * and finding specified substrings in a string
+	 */
+	//
 	static final Pattern pattern_spaceline=Pattern.compile("\\s*");
+	//====
 	static final Pattern pattern_titleline=Pattern.compile("={3,}");
+	//###xx xx
 	static final Pattern pattern_title_jing=Pattern.compile("[#]{2,}.*");
-	static final Pattern pattern_sbline_continuous=Pattern.compile("-{3}");
+	//---
+	static final Pattern pattern_sbline_consecutive=Pattern.compile("-{3}");
+	//- - - - -
 	static final Pattern pattern_sbline_discontinuous=Pattern.compile("(\\s*-\\s*){3,}");
-	//static final Pattern pattern_endnormaltext=Pattern.compile("");
+	//  *  *  **  **
 	static final Pattern pattern_starline=Pattern.compile("(\\s*\\*\\s*){3,}");
+	// >>>xxxx xxx
 	static final Pattern pattern_blockquote=Pattern.compile("\\s*>+.+");
+	// *xxxx    +xxxx    -xxxx
+	// 1.xxxx
 	static final Pattern pattern_list=Pattern.compile("\\s*([*+-]|[0-9]+\\.)\\s+.+");
-	
+	//![xxx](xxx "xxx")
 	static final Pattern pattern_image=Pattern.compile("!\\[.+\\]\\(.+ \".+\"\\)");
+	//[xxx](xxxxx)
 	static final Pattern pattern_weburl=Pattern.compile("\\[.+\\]\\(.+\\)");
 	//[xxx]
 	static final Pattern pattern_squarebracket=Pattern.compile("\\[.+?\\]");
@@ -64,43 +90,61 @@ public class M2HTranslater {
 	static final Pattern pattern_bracket=Pattern.compile("\\(.+?\\)");
 	//[id]:xxx  "xxxx"
 	static final Pattern pattern_referdefine=Pattern.compile("\\[.+?\\]:.+\\s+\".+?\"");
+	//```xx```x```xx````
 	static final Pattern pattern_code_greedy=Pattern.compile("[`]+.+[`]+");
+	//````xxxx```
 	static final Pattern pattern_code_scared=Pattern.compile("[`]+.+?[`]+");
+	//`````
 	static final Pattern pattern_code_op=Pattern.compile("[`]+");
-	//以四个space或一个tab开始的代码行
+	//\s\s\s\s or \t 
 	static final Pattern pattern_codeline=Pattern.compile("^(\\t|[ ]{4}).*[^ \\t]+.*");
 	
-	//行文本类
-	class LineText{
-		String content;	//文本内容
-		int type;	//行文本的类型
-		int blockquote_depth;	//处于引用块的深度，初值为0
-		boolean isblockquote_start;//是否是一个引用块的头
-		boolean isblockquote_end;//是否是引用块的结尾
-		int list_len;	//列表的缩进
-		boolean islist_order;	//true代表有序列表，false代表无序列表
-		boolean islist_head;	//是否是某个列表的第一个
-		int list_tailnum;	//列表的尾数量
-		LinkedList<Boolean> list_tailstack;	//列表的尾栈
-		boolean isCode;	//是代码行
+	//encapsulate the line String in mLineString
+	private class LineText{
+		String content;	//the content of the LineText
+		int type;	//the type of the LineText
+		int blockquote_depth;	//the depth of the (Block Quote)
+		boolean isblockquote_start;//true if is the first line of the (Block Quote)
+		boolean isblockquote_end;//true if is the line should be followed with </ul></ol>
+		int list_len;	//the deep length in the list
+		boolean islist_order;	//true if is in a <ol>,false if is in a <ul>
+		boolean islist_head;	//true if is the first line of a new list(or sublist)
+		int list_tailnum;	//number of the </ul>,</ol>
+		/*
+		 * a stack created if needed,and pop the true or false to add 
+		 * </ol>,</ul> at the end of the line text.
+		 */
+		LinkedList<Boolean> list_tailstack;	
+		boolean isCode;	//true if is in a <code>
 		
-		//创建时只能传入文本内容。
-		LineText(String c){
-			content=c;
-			//计算出引用深度，并将引用符号去除
-			blockquote_depth=caculateBlockquoteDepth();
+		//create with the String content
+		LineText(String _content){
+			content=_content;
+			//calculate the depth of the (Block Quote).
+			blockquote_depth=calculateBlockquoteDepth();
+			//judge the type of the line text (TEXTTYPE_).
 			type=judgeType(content);
-			caculateListParam();
+			/*
+			 * calculate the parameters about the list 
+			 * (list_len,islist_head,list_tailnum,islist_order)
+			 */
+			calculateListParam();
+			//the line text is not the end of (Block Quote) at beginning.
 			isblockquote_end=false;
-			if(pattern_codeline.matcher(c).matches()){
+			//the line text begins with 4 space or 1 tab so it's a code line
+			if(pattern_codeline.matcher(_content).matches()){
 				isCode=true;
 			}else{
 				isCode=false;
 			}
 		}
 		
-		//计算list相关的参数
-		void caculateListParam(){
+		/*
+		 * calculate the parameters of the list
+		 * (list_len,islist_head,list_tailnum,islist_order) 
+		 * remove the list-format sequence: *,1.,+,- 
+		 */
+		void calculateListParam(){
 			list_len=0;
 			islist_head=false;
 			list_tailnum=0;
@@ -108,25 +152,29 @@ public class M2HTranslater {
 				return;
 			}
 			int index=0;
-			//计算list_len的粗糙值(要在第二次扫描中进行调整)
-			list_len=1;	//初值是1
+			/*
+			 * calculate the list_len's coarse value,it's just a original value
+			 *  and will be trimmed in the SCAN#2.
+			 */
+			list_len=1;
 			while(index<content.length()){
 				if(content.charAt(index)==' '){
+					//the ' ' at the beginning will be ignored
 					list_len++;
 				}else{
-					//此时判断list项的类型，ul是无序，ol是有序
 					if(content.charAt(index)=='*'||content.charAt(index)=='+'
 							||content.charAt(index)=='-'){
+						//if the line text begins with *,+,-,it isn't order list 
 						islist_order=false;
-					}
-					else{
+					}else{
+						//else the line text must begin with 10.,it's order list
 						islist_order=true;
 					}
 					break;
 				}
 				index++;
 			}
-			//去除文本行中'+','*','100.'这类列表符号
+			//remove the *,+,-,100.
 			while(index<content.length()){
 				if(content.charAt(index)!=' '){
 					index++;
@@ -137,49 +185,56 @@ public class M2HTranslater {
 			content=content.substring(index);
 		}
 		
-		//计算文本行的引用深度
-		int caculateBlockquoteDepth(){
+		//calculate the depth of the (Block Quote)
+		int calculateBlockquoteDepth(){
 			int quotecount=0;
-			//引用模式匹配成功，
 			if(pattern_blockquote.matcher(content).matches()){
-				//此时只要是有引用符号的，都认为是引用开始，接下来的扫描会细化
+				//the line text is in format:>>> xxx
+				/*
+				 * the line text will be considered as the start of the (Block Quote)
+				 * and the value of isblockquote_start will be trimmed next.  
+				 */
 				isblockquote_start=true;	
 				int index=0;
-				//扫描字符串，数连续的'>'个数
+				//scan the line text and get the count of '>'.
 				while(index<content.length()){
-					//一个还没找着，这次也没找着，要继续找
 					if(quotecount==0&&content.charAt(index)!='>'){
+						//haven't found '>'.
 						index++;
 						continue;
 					}
-					//这次找着了，进入下一轮
 					if(content.charAt(index)=='>'){
+						//find a '>',count and continue.
 						quotecount++;
 						index++;
 						continue;
 					}
-					//已经找着过了，但这次不是
 					else{
+						//first letter after >>> sequence.
 						break;
 					}
 				}
+				//remove the ">>>" sequence from the line text.
 				content=content.substring(index);
 			}else{
+				//the line text is not begin with " >>>" 
 				isblockquote_start=false;
 			}
 			return quotecount;
 		}
 		
-		//判断出文本行的类型
-		//
+		//judge the type of the line text (TEXTTYPE_).
 		int judgeType(String content){
-			//用正则表达式判断文本行属于什么类型的
+			/*
+			 * judge by the Patterns defined above.
+			 * the order of the judge progress cannot be upside down.
+			 */
 			if(pattern_spaceline.matcher(content).matches()){
 				return TEXTYPE_SPACELINE;
 			}else if(pattern_titleline.matcher(content).matches()){
 				return TEXTTYPE_TITLELINE;
-			}else if(pattern_sbline_continuous.matcher(content).matches()){
-				return TEXTTYPE_SBLINE_CONTINUOUS;
+			}else if(pattern_sbline_consecutive.matcher(content).matches()){
+				return TEXTTYPE_SBLINE_CONSECUTIVE;
 			}else if(pattern_sbline_discontinuous.matcher(content).matches()){
 				return TEXTTYPE_SBLINE_DISCONTINUOUS;
 			}else if(pattern_starline.matcher(content).matches()){
@@ -189,8 +244,6 @@ public class M2HTranslater {
 			}else if(pattern_list.matcher(content).matches()){
 				return TEXTTYPE_LIST;
 			}
-			
-			//TEXTTYPE_ENDNORMALTEXT暂时用排除法判断
 			else if(content.length()>2&&content.charAt(content.length()-1)==' '
 					&&content.charAt(content.length()-2)==' '){
 				return TEXTTYPE_ENDNORMALTEXT;
@@ -200,7 +253,7 @@ public class M2HTranslater {
 	}
 	
 	/*
-	 * 元素的类型
+	 * below are the type of the element in the magic_stack.
 	 */
 	private final static int ELEMENTTYPE_UNKNOW=0;
 	private final static int ELEMENTTYPE_TEXT=1;
@@ -217,94 +270,91 @@ public class M2HTranslater {
 	private final static int ELEMENTTYPE_OP_5JING=12;	//#####
 	private final static int ELEMENTTYPE_OP_6JING=13;	//######
 	private final static int ELEMENTTYPE_OP_BR=14;	//\n
-	
-	private final static int ELEMENTTYPE_TRANSCHAR_XIEGANG=100;	//'\\'
-	private final static int ELEMENTTYPE_TRANSCHAR_FANYING=101;	//'\`'
-	private final static int ELEMENTTYPE_TRANSCHAR_STAR=102;	//'\*'
-	private final static int ELEMENTTYPE_TRANSCHAR_SB=103;	//'\_'
-	private final static int ELEMENTTYPE_TRANSCHAR_LEFTHUA=104;	//'\{'
-	private final static int ELEMENTTYPE_TRANSCHAR_RIGHTHUA=105;	//'\}'
-	private final static int ELEMENTTYPE_TRANSCHAR_LEFTFANG=107;	//'\['
-	private final static int ELEMENTTYPE_TRANSCHAR_RIGHTFANG=108;	//'\]'
-	private final static int ELEMENTTYPE_TRANSCHAR_LEFTYUAN=109;	//'\('
-	private final static int ELEMENTTYPE_TRANSCHAR_RIGHTYUAN=110;	//'\)'
-	private final static int ELEMENTTYPE_TRANSCHAR_JING=111;	//'\#'
-	private final static int ELEMENTTYPE_TRANSCHAR_JIA=112;	//'\+'
-	private final static int ELEMENTTYPE_TRANSCHAR_JIAN=113;	//'\-'
-	private final static int ELEMENTTYPE_TRANSCHAR_DOT=114;	//'\.'
-	private final static int ELEMENTTYPE_TRANSCHAR_GANTAN=115;	//'\!'
-	
-	//........
-	
-	
-	//在处理每一个行时，栈中每一格的元素类
-	class StackElement{
-		int type;	//他是属于操作符还是文本
-		String content;	//具体的内容
-		boolean isTransChar;	//是否是转义字符
-		StackElement(int t,String c){
-			type=t;
-			content=c;
+	//below are the Escape Sequence,and they will also be push into the magic_stack
+	private final static int ELEMENTTYPE_ESCAPECHAR_XIEGANG=100;	//'\\'
+	private final static int ELEMENTTYPE_ESCAPECHAR_FANYING=101;	//'\`'
+	private final static int ELEMENTTYPE_ESCAPECHAR_STAR=102;	//'\*'
+	private final static int ELEMENTTYPE_ESCAPECHAR_SB=103;	//'\_'
+	private final static int ELEMENTTYPE_ESCAPECHAR_LEFTHUA=104;	//'\{'
+	private final static int ELEMENTTYPE_ESCAPECHAR_RIGHTHUA=105;	//'\}'
+	private final static int ELEMENTTYPE_ESCAPECHAR_LEFTFANG=107;	//'\['
+	private final static int ELEMENTTYPE_ESCAPECHAR_RIGHTFANG=108;	//'\]'
+	private final static int ELEMENTTYPE_ESCAPECHAR_LEFTYUAN=109;	//'\('
+	private final static int ELEMENTTYPE_ESCAPECHAR_RIGHTYUAN=110;	//'\)'
+	private final static int ELEMENTTYPE_ESCAPECHAR_JING=111;	//'\#'
+	private final static int ELEMENTTYPE_ESCAPECHAR_JIA=112;	//'\+'
+	private final static int ELEMENTTYPE_ESCAPECHAR_JIAN=113;	//'\-'
+	private final static int ELEMENTTYPE_ESCAPECHAR_DOT=114;	//'\.'
+	private final static int ELEMENTTYPE_ESCAPECHAR_GANTAN=115;	//'\!'
+
+	//package the element in the magic_stack
+	private class StackElement{
+		int type;	//the type of the element,(ELEMENTTYPE_).
+		String content;	//the content of the element
+		boolean isEscapeChar;	//true if is the escape char
+		StackElement(int _type,String _content){
+			type=_type;
+			content=_content;
 		}
 		
-		//刚扫描到一个字符时直接创建一个StackElement，并且在构造函数中判断类型
-		StackElement(char c,boolean istrans){
-			content=c+"";
-			isTransChar=istrans;
-			type=judgeType(c, istrans);
+		//create a StackElement and judge it's type then.
+		StackElement(char _content,boolean _isescape){
+			content=_content+"";
+			isEscapeChar=_isescape;
+			type=judgeType(_content, _isescape);
 		}
 		
-		//判断一个字符是什么类型
-		int judgeType(char c,boolean istrans)
+		//judge the type the _char
+		int judgeType(char _char,boolean _isescape)
 		{
 			int t=ELEMENTTYPE_UNKNOW;
-			//是转义字符
-			if(istrans){
-				switch(c){
+			if(_isescape){
+				//if escape char.
+				switch(_char){
 				case '\\':
-					t=ELEMENTTYPE_TRANSCHAR_XIEGANG;
+					t=ELEMENTTYPE_ESCAPECHAR_XIEGANG;
 					break;
 				case '`':
-					t=ELEMENTTYPE_TRANSCHAR_FANYING;
+					t=ELEMENTTYPE_ESCAPECHAR_FANYING;
 					break;
 				case '*':
-					t=ELEMENTTYPE_TRANSCHAR_STAR;
+					t=ELEMENTTYPE_ESCAPECHAR_STAR;
 					break;
 				case '_':
-					t=ELEMENTTYPE_TRANSCHAR_SB;
+					t=ELEMENTTYPE_ESCAPECHAR_SB;
 					break;
 				case '{':
-					t=ELEMENTTYPE_TRANSCHAR_LEFTHUA;
+					t=ELEMENTTYPE_ESCAPECHAR_LEFTHUA;
 					break;
 				case '}':
-					t=ELEMENTTYPE_TRANSCHAR_RIGHTHUA;
+					t=ELEMENTTYPE_ESCAPECHAR_RIGHTHUA;
 					break;
 				case '[':
-					t=ELEMENTTYPE_TRANSCHAR_LEFTFANG;
+					t=ELEMENTTYPE_ESCAPECHAR_LEFTFANG;
 					break;
 				case ']':
-					t=ELEMENTTYPE_TRANSCHAR_RIGHTFANG;
+					t=ELEMENTTYPE_ESCAPECHAR_RIGHTFANG;
 					break;
 				case '(':
-					t=ELEMENTTYPE_TRANSCHAR_LEFTYUAN;
+					t=ELEMENTTYPE_ESCAPECHAR_LEFTYUAN;
 					break;
 				case ')':
-					t=ELEMENTTYPE_TRANSCHAR_RIGHTYUAN;
+					t=ELEMENTTYPE_ESCAPECHAR_RIGHTYUAN;
 					break;
 				case '#':
-					t=ELEMENTTYPE_TRANSCHAR_JING;
+					t=ELEMENTTYPE_ESCAPECHAR_JING;
 					break;
 				case '+':
-					t=ELEMENTTYPE_TRANSCHAR_JIA;
+					t=ELEMENTTYPE_ESCAPECHAR_JIA;
 					break;
 				case '-':
-					t=ELEMENTTYPE_TRANSCHAR_JIAN;
+					t=ELEMENTTYPE_ESCAPECHAR_JIAN;
 					break;
 				case '.':
-					t=ELEMENTTYPE_TRANSCHAR_DOT;
+					t=ELEMENTTYPE_ESCAPECHAR_DOT;
 					break;
 				case '!':
-					t=ELEMENTTYPE_TRANSCHAR_GANTAN;
+					t=ELEMENTTYPE_ESCAPECHAR_GANTAN;
 					break;
 				default:
 					t=ELEMENTTYPE_TEXT;
@@ -313,7 +363,8 @@ public class M2HTranslater {
 			}
 			else
 			{
-				switch(c){
+				//is not escape char.
+				switch(_char){
 				case ' ':
 					t=ELEMENTTYPE_SPACE;
 					break;
@@ -341,10 +392,10 @@ public class M2HTranslater {
 		}
 	}
 	
-	//构造器
-	public M2HTranslater(String string){
+	//the constructor of the M2HTranslator
+	public M2HTranslator(String string){
 		if(string!=null){
-			//另开辟了一个字符串对象，防止原来的字符串有其他用
+			//new a String.
 			this.origin_string=new String(string);	
 			if(VVDBG){
 				System.out.println("M2HTranslater(String string),origin_string=="+origin_string);
@@ -353,47 +404,47 @@ public class M2HTranslater {
 		else{
 			this.origin_string="";	
 		}
-		stack_listtail=new LinkedList<Boolean>();
-		map_referdefine=new HashMap<String,PathTitleUnit>();
-		//将转义字符添加到转义集合中
-		set_transchar=new HashSet<Character>();
-		set_transchar.add('\\');
-		set_transchar.add('`');
-		set_transchar.add('*');
-		set_transchar.add('_');
-		set_transchar.add('{');
-		set_transchar.add('}');
-		set_transchar.add('[');
-		set_transchar.add(']');
-		set_transchar.add('(');
-		set_transchar.add(')');
-		set_transchar.add('#');
-		set_transchar.add('+');
-		set_transchar.add('-');
-		set_transchar.add('.');
-		set_transchar.add('!');
+		mListTail=new LinkedList<Boolean>();
+		mReferDefineMap=new HashMap<String,PathTitleUnit>();
+		//add all the escape chars into the mEscpaeCharSet.
+		mEscapeCharSet=new HashSet<Character>();
+		mEscapeCharSet.add('\\');
+		mEscapeCharSet.add('`');
+		mEscapeCharSet.add('*');
+		mEscapeCharSet.add('_');
+		mEscapeCharSet.add('{');
+		mEscapeCharSet.add('}');
+		mEscapeCharSet.add('[');
+		mEscapeCharSet.add(']');
+		mEscapeCharSet.add('(');
+		mEscapeCharSet.add(')');
+		mEscapeCharSet.add('#');
+		mEscapeCharSet.add('+');
+		mEscapeCharSet.add('-');
+		mEscapeCharSet.add('.');
+		mEscapeCharSet.add('!');
 	}
 	
 	/*
-	 * 判断一个字符是否可以被转义
-	 * 例如： isTransChar(*)  return true;
+	 * judge whether a char is escape or not.
+	 * for example： isTransChar(*)  return true;
 	 * 		isTransChar(a)	return false;
 	 */
-	private boolean isTransChar(char c){
-		if(set_transchar.contains(new Character(c))){
+	private boolean isEscapeChar(char c){
+		if(mEscapeCharSet.contains(new Character(c))){
 			return true;
 		}
 		return false;
 	}
 	
-	//将origin_string切割，分到map_string中
+	//split the origin_string into mLineString.
 	private boolean splitString(){
 		//把map_string创建出来，如果已经存在了，就清空
-		if(al_LineString==null){
-			al_LineString=new ArrayList<LineText>();
+		if(mLineString==null){
+			mLineString=new ArrayList<LineText>();
 		}
 		else{
-			al_LineString.clear();
+			mLineString.clear();
 		}
 		if(origin_string==null){
 			return false;
@@ -409,26 +460,26 @@ public class M2HTranslater {
 				if(VVDBG){
 					System.out.println("splitString!");
 				}
-				al_LineString.add(new LineText(string_arr[i]));
+				mLineString.add(new LineText(string_arr[i]));
 			}
 			//此时已经初步按照\n将整个大段文本分开，并且标记了类型。
 			//需要进一步整合行文本，使其以段落为行文本的单位
 			//第二次扫描,去除多余的空白行，将TEXTTYPE_TITLELINE的行删掉
-			for(int i=0;i<al_LineString.size();i++){
-				LineText lt_curr=al_LineString.get(i);	//当前的LineText
+			for(int i=0;i<mLineString.size();i++){
+				LineText lt_curr=mLineString.get(i);	//当前的LineText
 				LineText lt_next=null;	//下一个text
-				if(i+1<al_LineString.size()){
-					lt_next=al_LineString.get(i+1);
+				if(i+1<mLineString.size()){
+					lt_next=mLineString.get(i+1);
 				}
 				if(lt_next==null){
 					if(lt_curr.type==TEXTTYPE_LIST){
 						lt_curr.islist_head=true;
 						lt_curr.list_tailnum=lt_curr.list_len;
 						lt_curr.list_tailstack=new LinkedList<Boolean>();
-						stack_listtail.push(lt_curr.islist_order);
+						mListTail.push(lt_curr.islist_order);
 						//向文本行的list_tailstack成员中加入Boolean对象,并且结构于stack_listtail一致
 						for(int j=0;j<lt_curr.list_tailnum;j++){
-							lt_curr.list_tailstack.addLast(stack_listtail.pop());
+							lt_curr.list_tailstack.addLast(mListTail.pop());
 						}
 					}
 					break;
@@ -436,25 +487,25 @@ public class M2HTranslater {
 				if(lt_curr.type==TEXTTYPE_LIST&&i==0){
 					lt_curr.islist_head=true;
 					lt_curr.list_len=1;	//第一个列表项的list_len必须是1
-					stack_listtail.push(lt_curr.islist_order);
+					mListTail.push(lt_curr.islist_order);
 				}
 				//如果当前文本行是一个普通文本/换行文本，并且下一个文本行是====或者是-----
 				if((lt_curr.type==TEXTTYPE_NORMAL
 						||lt_curr.type==TEXTTYPE_ENDNORMALTEXT)&&
 						(lt_next.type==TEXTTYPE_TITLELINE||
-						lt_next.type==TEXTTYPE_SBLINE_CONTINUOUS)){
+						lt_next.type==TEXTTYPE_SBLINE_CONSECUTIVE)){
 					//将当前文本的type改成TEXTTYPE_TITLE
 					lt_curr.type=TEXTTYPE_TITLE_EQUAL;
 					lt_curr.blockquote_depth=0;	//这类文本行不能位于引用中
 					//===/----这种TEXTTYPE_TITLELINE文本行已经失去他们的价值，删掉
-					al_LineString.remove(i+1);
+					mLineString.remove(i+1);
 					continue;
 				}
 				//当前行，下一行都是空白行
 				if(lt_curr.type==TEXTYPE_SPACELINE&&
 						lt_next.type==TEXTYPE_SPACELINE){
 					//删掉下面一行
-					al_LineString.remove(i+1);
+					mLineString.remove(i+1);
 					//退回一格，下次循环仍要从本空白行开始
 					i--;
 					continue;
@@ -478,7 +529,7 @@ public class M2HTranslater {
 				if(lt_curr.type!=TEXTTYPE_LIST&&lt_next.type==TEXTTYPE_LIST){
 					lt_next.islist_head=true;
 					lt_next.list_len=1;	//第一个列表项的list_len必须是1
-					stack_listtail.push(lt_next.islist_order);
+					mListTail.push(lt_next.islist_order);
 				}
 				//当前文本和下一文本都是list
 				if(lt_curr.type==TEXTTYPE_LIST&&lt_next.type==TEXTTYPE_LIST){
@@ -486,17 +537,17 @@ public class M2HTranslater {
 					if(i==0){
 						lt_curr.islist_head=true;
 						lt_curr.list_len=1;
-						stack_listtail.push(lt_curr.islist_order);
+						mListTail.push(lt_curr.islist_order);
 					}
 					if(lt_next.list_len>lt_curr.list_len){
 						lt_next.list_len=lt_curr.list_len+1;
 						lt_next.islist_head=true;
-						stack_listtail.push(lt_next.islist_order);
+						mListTail.push(lt_next.islist_order);
 					}else if(lt_next.list_len<lt_curr.list_len){
 						lt_curr.list_tailnum=lt_curr.list_len-lt_next.list_len;
 						lt_curr.list_tailstack=new LinkedList<Boolean>();
 						for(int j=0;j<lt_curr.list_tailnum;j++){
-							lt_curr.list_tailstack.addLast(stack_listtail.pop());
+							lt_curr.list_tailstack.addLast(mListTail.pop());
 						}
 					}
 				}
@@ -504,9 +555,9 @@ public class M2HTranslater {
 				if(lt_curr.type==TEXTTYPE_LIST&&lt_next.type!=TEXTTYPE_LIST){
 					lt_curr.list_tailnum=lt_curr.list_len;
 					lt_curr.list_tailstack=new LinkedList<Boolean>();
-					stack_listtail.push(lt_curr.islist_order);
+					mListTail.push(lt_curr.islist_order);
 					for(int j=0;j<lt_curr.list_tailnum;j++){
-						lt_curr.list_tailstack.addLast(stack_listtail.pop());		
+						lt_curr.list_tailstack.addLast(mListTail.pop());		
 					}
 				}
 			}
@@ -519,11 +570,11 @@ public class M2HTranslater {
 			
 			
 			//第三次扫描，将同一个段落的文本合并成一行
-			for(int i=0;i<al_LineString.size();i++){
-				LineText lt_curr=al_LineString.get(i);	//当前的LineText
+			for(int i=0;i<mLineString.size();i++){
+				LineText lt_curr=mLineString.get(i);	//当前的LineText
 				LineText lt_next=null;	//下一个text
-				if(i+1<al_LineString.size()){
-					lt_next=al_LineString.get(i+1);
+				if(i+1<mLineString.size()){
+					lt_next=mLineString.get(i+1);
 				}
 				if(lt_next==null){
 					break;
@@ -543,7 +594,7 @@ public class M2HTranslater {
 						//合并两个文本到当前的LineText,删除next
 						lt_curr.content+=lt_next.content;
 						lt_curr.type=lt_next.type;
-						al_LineString.remove(i+1);
+						mLineString.remove(i+1);
 						i--;
 						continue;
 					}
@@ -564,7 +615,7 @@ public class M2HTranslater {
 						lt_curr.type=lt_next.type;
 						//深度只会越变越大
 						lt_curr.blockquote_depth=lt_next.blockquote_depth;
-						al_LineString.remove(i+1);
+						mLineString.remove(i+1);
 						i--;
 						continue;
 					}
@@ -584,7 +635,7 @@ public class M2HTranslater {
 						//合并两个文本到当前的LineText,删除next
 						lt_curr.content+="\n"+lt_next.content;
 						lt_curr.type=lt_next.type;
-						al_LineString.remove(i+1);
+						mLineString.remove(i+1);
 						i--;
 						continue;
 					}
@@ -605,7 +656,7 @@ public class M2HTranslater {
 						lt_curr.isblockquote_start=false;
 						//深度只会越变越大
 						lt_curr.blockquote_depth=lt_next.blockquote_depth;
-						al_LineString.remove(i+1);
+						mLineString.remove(i+1);
 						i--;
 						continue;
 					}
@@ -656,7 +707,7 @@ public class M2HTranslater {
 				end_index++;
 			}
 			String pt_string=StringUtils.eliminate(rd_string, start_index, end_index);
-			map_referdefine.put(id_string, new PathTitleUnit(pt_string));
+			mReferDefineMap.put(id_string, new PathTitleUnit(pt_string));
 			origin_string=StringUtils.eliminate(origin_string, rd_start_index, rd_end_index-1);
 			matcher_referdefine=pattern_referdefine.matcher(origin_string);
 		}
@@ -678,7 +729,7 @@ public class M2HTranslater {
 		//pop操作：removeFirst()
 		//peek操作：getFirst()
 		LinkedList<StackElement> magic_stack=new LinkedList<StackElement>();
-		Iterator<LineText> iterator=al_LineString.iterator();
+		Iterator<LineText> iterator=mLineString.iterator();
 		if(VDBG){
 			System.out.println("遍历al_LineString:");
 		}
@@ -709,7 +760,7 @@ public class M2HTranslater {
 						if(lineindex+1<textstring.length()){
 							char letter_next=textstring.charAt(lineindex+1);
 							//如果下一个字符可以和\拼成转义字符
-							if(isTransChar(letter_next)){
+							if(isEscapeChar(letter_next)){
 								if(VVDBG){
 									System.out.println("magic_stack转义字符："+letter_next);	
 								}
@@ -731,7 +782,7 @@ public class M2HTranslater {
 					StackElement se_top=magic_stack.peek();	//栈顶元素
 					while(true){
 						//是转义字符
-						if(se_add.isTransChar){
+						if(se_add.isEscapeChar){
 							if(se_top!=null&&se_top.type==ELEMENTTYPE_TEXT){
 								String newstring=se_top.content+se_add.content;
 								magic_stack.pop();
@@ -1252,7 +1303,7 @@ public class M2HTranslater {
 					if(image_id.length()>=2){
 						image_id=image_id.substring(1, image_id.length()-1);
 						}
-					PathTitleUnit ptu=map_referdefine.get(image_id);
+					PathTitleUnit ptu=mReferDefineMap.get(image_id);
 					if(ptu!=null){
 						image_path=ptu.getPath();
 						image_title=ptu.getTitle();
@@ -1288,7 +1339,7 @@ public class M2HTranslater {
 					if(url_id.length()>=2){
 						url_id=url_id.substring(1, url_id.length()-1);
 					}
-					PathTitleUnit ptu=map_referdefine.get(url_id);
+					PathTitleUnit ptu=mReferDefineMap.get(url_id);
 					if(ptu!=null){
 						url_path=ptu.getPath();
 						url_title=ptu.getTitle();
@@ -1380,7 +1431,7 @@ public class M2HTranslater {
 			}
 		}
 		
-		Iterator<LineText> iter=al_LineString.iterator();
+		Iterator<LineText> iter=mLineString.iterator();
 		StringBuilder html_stringbuilder=new StringBuilder();
 		while(iter.hasNext()){
 			LineText lt_get=iter.next();
@@ -1401,8 +1452,8 @@ public class M2HTranslater {
 	
 	//打印出每一行的文本内容和文本类型
 	private void printLineStrings(){
-		if(this.al_LineString!=null){
-			Iterator<LineText> iter=al_LineString.iterator();
+		if(this.mLineString!=null){
+			Iterator<LineText> iter=mLineString.iterator();
 			while(iter.hasNext()){
 				LineText lt=iter.next();
 				System.out.println("type:"+lt.type+"\ncontent:"+lt.content+"\n"
@@ -1415,12 +1466,12 @@ public class M2HTranslater {
 	}
 
 	private void printReferDefine(){
-		if(map_referdefine!=null){
-			Set<String> set=map_referdefine.keySet();
+		if(mReferDefineMap!=null){
+			Set<String> set=mReferDefineMap.keySet();
 			Iterator<String> it=set.iterator();
 			while(it.hasNext()){
 				String key=it.next();
-				PathTitleUnit ptu=map_referdefine.get(key);
+				PathTitleUnit ptu=mReferDefineMap.get(key);
 				System.out.println("id:"+key+",path:"+ptu.getPath()+",title:"+ptu.getTitle());
 				
 			}
@@ -1428,6 +1479,6 @@ public class M2HTranslater {
 	}
 	
 	private void printStack_tail(){
-		System.out.println(stack_listtail);
+		System.out.println(mListTail);
 	}
 }
