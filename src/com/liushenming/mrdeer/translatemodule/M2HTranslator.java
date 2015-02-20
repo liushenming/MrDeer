@@ -699,16 +699,20 @@ public class M2HTranslator {
 	
 	/**
 	 * the core method of M2HTranslator.
-	 * 
+	 * the method will translate the markdown string to html string.
 	 */
 	public String translate(){
-		//将所有的referdefine类型的短语全部提取出来，放置到map_referdefine中
+		/*
+		 * recognize all []:xxx "xxx"(reference defined),
+		 * and put them into mReferDefineMap.
+		 * Delete them from the origin_string at the same time.
+		 */
 		Matcher matcher_referdefine=pattern_referdefine.matcher(origin_string);
 		while(matcher_referdefine.find()){
 			String rd_string=matcher_referdefine.group();
 			int rd_start_index=matcher_referdefine.start();
 			int rd_end_index=matcher_referdefine.end();
-			//[id]:PathTitleUnit部分
+			//get the ([id]) from [id]:PathTitleUnit.
 			Matcher matcher_id=pattern_squarebracket.matcher(rd_string);
 			String id_string="";
 			int start_index=0;
@@ -721,8 +725,7 @@ public class M2HTranslator {
 			if(id_string.length()>=2){
 				id_string=id_string.substring(1, id_string.length()-1);//去方括号
 			}
-			//此时end_index指向的是[id]的末尾，而:也应该被剔除
-			//找到:所在index，设为end_index
+			//get the PathTitleUnit part in the ([id]:PathTitleUnit).
 			while(end_index<rd_string.length()){
 				if(rd_string.charAt(end_index)==':'){
 					break;
@@ -730,7 +733,9 @@ public class M2HTranslator {
 				end_index++;
 			}
 			String pt_string=StringUtils.eliminate(rd_string, start_index, end_index);
+			//put the recognized (Reference defined) to mReferDefineMap.
 			mReferDefineMap.put(id_string, new PathTitleUnit(pt_string));
+			//remove the [id]:PathTitleUnit from origin_string.
 			origin_string=StringUtils.eliminate(origin_string, rd_start_index, rd_end_index-1);
 			matcher_referdefine=pattern_referdefine.matcher(origin_string);
 		}
@@ -738,74 +743,76 @@ public class M2HTranslator {
 			printReferDefine();	
 		}
 		
-		
 		if(!splitString()){
-			//划分失败
+			//cannot split(origin_string==null).
 			return "ERROR";
 		}
-		//先把原始文本给切割了
-		//以行为单位对文本进行处理
-		//先对每一行添加html标签，然后再对段落加上<p>标签
 		
-		//直接用一个LinkedList作为栈
-		//push操作：addFirst()
-		//pop操作：removeFirst()
-		//peek操作：getFirst()
+		/*
+		 * Here are the core steps to deal with the LineText in mLineString
+		 * one by one.
+		 * First we do PUSH to magic_stack.
+		 * Second we do POP from magic_stack.
+		 * Finally we do some works to make the html-string completely as the case. 
+		 * 
+		 * We use a LinkedList<StackElement> magic_stack as the Stack,
+		 * by using its method: push(),pop().
+		 *
+		 */
 		LinkedList<StackElement> magic_stack=new LinkedList<StackElement>();
 		Iterator<LineText> iterator=mLineString.iterator();
 		if(VDBG){
 			System.out.println("遍历al_LineString:");
 		}
 		while(iterator.hasNext()){
-			LineText linetext=iterator.next();	//遍历到的文本行
-			if(VDBG){
+			//get a LineText to be dealed with.
+			LineText linetext=iterator.next();
+			if(VVDBG){
 				System.out.println("next:"+linetext.content);
 			}
-			//只有NORMAL/ENDNORMALTEXT/TITLE类型的文本才可以进入stack进行处理
-			if(linetext.type==TEXTTYPE_NORMAL||
-					linetext.type==TEXTTYPE_ENDNORMALTEXT||
-					linetext.type==TEXTTYPE_TITLE_JING||
-					linetext.type==TEXTTYPE_TITLE_EQUAL||
-					linetext.type==TEXTTYPE_LIST){
-				String textstring=linetext.content;	//获取了行文本的内容
+			
+			//content of the linetext dealed with
+			String text_content=linetext.content;
+			//type of the linetext dealed with
+			int text_type=linetext.type;
+			if(text_type==TEXTTYPE_NORMAL||text_type==TEXTTYPE_ENDNORMALTEXT||
+				text_type==TEXTTYPE_TITLE_JING||text_type==TEXTTYPE_TITLE_EQUAL||
+				text_type==TEXTTYPE_LIST){
+				//String textstring=linetext.content;
 				int lineindex=0;
 				magic_stack.clear();
-				//从头至尾扫描字符
-				//step1:依次压栈
-				//step2:最终把栈处理一下
-				while(lineindex<textstring.length()){
-					char letter=textstring.charAt(lineindex);
-					//此处判断是否是'\'
-					//若是，则为转义字符，读取下一个字符，若能拼成转义则转义
-					//若不是，则继续。
+				//scan the linetext in one char by one char.
+				while(lineindex<text_content.length()){
+					char letter=text_content.charAt(lineindex);
+					/*
+					 * judge if the letter and next letter can make Escape Char.
+					 * or just a normal letter.
+					 */
 					StackElement se_add;
 					if(letter=='\\'){
-						if(lineindex+1<textstring.length()){
-							char letter_next=textstring.charAt(lineindex+1);
-							//如果下一个字符可以和\拼成转义字符
+						if(lineindex+1<text_content.length()){
+							char letter_next=text_content.charAt(lineindex+1);
 							if(isEscapeChar(letter_next)){
+								//letter is '\' and letter_next is a Escape Char.
 								if(VVDBG){
 									System.out.println("magic_stack转义字符："+letter_next);	
 								}
 								lineindex++;
 								se_add=new StackElement(letter_next,true);
-							}
-							//否则不管，'\'只是个普通的字符
-							else{
+							}else{
 								se_add=new StackElement(letter,false);
 							}
-						}
-						else{
+						}else{
 							se_add=new StackElement(letter,false);
 						}
 					}else{
 						se_add=new StackElement(letter,false);
 					}
 					
-					StackElement se_top=magic_stack.peek();	//栈顶元素
+					StackElement se_top=magic_stack.peek();
 					while(true){
-						//是转义字符
 						if(se_add.isEscapeChar){
+							//push Escape Char.
 							if(se_top!=null&&se_top.type==ELEMENTTYPE_TEXT){
 								String newstring=se_top.content+se_add.content;
 								magic_stack.pop();
@@ -818,10 +825,10 @@ public class M2HTranslator {
 								break;
 							}
 						}
-						//压空格栈元素
 						else if(se_add.type==ELEMENTTYPE_SPACE){
+							//push SPACE.
 							if(se_top==null){
-								//直接无视文本行最前的空格
+								//ignore the spaces at very beginning.
 								break;
 							}
 							if(se_top.type==ELEMENTTYPE_TEXT){
