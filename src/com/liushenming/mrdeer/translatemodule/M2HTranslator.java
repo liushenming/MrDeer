@@ -751,9 +751,9 @@ public class M2HTranslator {
 		/*
 		 * Here are the core steps to deal with the LineText in mLineString
 		 * one by one.
-		 * First we do PUSH to magic_stack.
-		 * Second we do POP from magic_stack.
-		 * Finally we do some works to make the html-string completely as the case. 
+		 * First, we do PUSH to magic_stack.
+		 * Second, we do POP from magic_stack.
+		 * Finally, we do some works to make the html-string completely as the case. 
 		 * 
 		 * We use a LinkedList<StackElement> magic_stack as the Stack,
 		 * by using its method: push(),pop().
@@ -782,6 +782,7 @@ public class M2HTranslator {
 				int lineindex=0;
 				magic_stack.clear();
 				//scan the linetext in one char by one char.
+				//First.
 				while(lineindex<text_content.length()){
 					char letter=text_content.charAt(lineindex);
 					/*
@@ -834,23 +835,22 @@ public class M2HTranslator {
 							if(se_top.type==ELEMENTTYPE_TEXT){
 								if(se_top.content.charAt(se_top.content.length()-1)
 										!=' '){
-									//添加上这一个空格
+									//add the first space and ignore the next ones.
 									String newstring=se_top.content+" ";
 									magic_stack.pop();
 									se_add=new StackElement(ELEMENTTYPE_TEXT,newstring);
 									se_top=magic_stack.peek();
 									continue;
 								}else{
-									//行中多个空格合并成为一个，无视该一个空格
+									//ignore the next ones.
 									break;
 								}
 							}else{
 								break;
 							}
 						}
-						//压正文
 						else if(se_add.type==ELEMENTTYPE_TEXT){
-							//栈顶也是TEXT类型
+							//push TEXT.
 							if(se_top!=null&&se_top.type==ELEMENTTYPE_TEXT){
 								magic_stack.pop();
 								String newtext=se_top.content+se_add.content;
@@ -858,13 +858,12 @@ public class M2HTranslator {
 								se_top=magic_stack.peek();
 								continue;
 							}else{
-								//其他情况，直接压栈
 								magic_stack.push(se_add);
 								break;
 							}
 						}
-						//压'_'
 						else if(se_add.type==ELEMENTTYPE_OP_SB){
+							//push '_'.
 							if(se_top==null){
 								magic_stack.push(se_add);
 								break;
@@ -887,9 +886,9 @@ public class M2HTranslator {
 								magic_stack.push(se_add);
 								break;
 							}
-						}
-						//压'__'
+						}					
 						else if(se_add.type==ELEMENTTYPE_OP_2SB){
+							//push '__'.
 							if(se_top==null){
 								magic_stack.push(se_add);
 								break;
@@ -907,8 +906,8 @@ public class M2HTranslator {
 								magic_stack.add(se_add);
 							}
 						}
-						//压'*'
 						else if(se_add.type==ELEMENTTYPE_OP_STAR){
+							//push '*'.
 							if(se_top==null){
 								magic_stack.push(se_add);
 								break;
@@ -931,8 +930,8 @@ public class M2HTranslator {
 								break;
 							}
 						}
-						//压'**'
 						else if(se_add.type==ELEMENTTYPE_OP_2STAR){
+							//push '**'.
 							if(se_top==null){
 								magic_stack.push(se_add);
 								break;
@@ -946,22 +945,19 @@ public class M2HTranslator {
 								se_add=new StackElement(ELEMENTTYPE_TEXT,newtext);
 								se_top=magic_stack.peek();
 								continue;
-							}
-							else{
+							}else{
 								magic_stack.add(se_add);
 							}
 						}
-						//压'#'
 						else if(se_add.type==ELEMENTTYPE_OP_JING){
-							//如果栈底是#序列或者#前只有空格，那么则起格式控制作用
-							//否则就直接变成文本类型
+							//push '#'.
 							if(se_top==null){
-								//直接就是文本行最前的#
+								//now the '#' is title-format sequence.
 								magic_stack.push(se_add);
 								break;
 							}
 							if(magic_stack.size()==1){
-								//当前栈中已经有了一个元素，#不放在最前就不是格式控制符
+								//'#' can be title-format or text sequence.
 								if(se_top.type==ELEMENTTYPE_OP_JING){
 									magic_stack.pop();
 									magic_stack.push(new StackElement(
@@ -995,12 +991,11 @@ public class M2HTranslator {
 									Pattern patt_block=Pattern.compile("(<blockquote>)+");
 									Matcher matcher=patt_block.matcher(se_top.content);
 									if(matcher.matches()){
-										//说明#前只有\t
 										magic_stack.push(se_add);
 										break;
 									}
 									magic_stack.pop();
-									//填至末尾
+									//add to the end or the se_top.
 									String newstring=se_top.content+="#";
 									se_add=new StackElement(ELEMENTTYPE_TEXT,newstring);
 									magic_stack.push(se_add);
@@ -1014,30 +1009,30 @@ public class M2HTranslator {
 							}
 							
 						}							
-						//压'##'
 						else if(se_add.type==ELEMENTTYPE_OP_2JING){
+							//push '##'.
 							break;
 						}
-						//压'###'
 						else if(se_add.type==ELEMENTTYPE_OP_3JING){
+							//push '###'.
 							break;
 						}
-						//压'####'
 						else if(se_add.type==ELEMENTTYPE_OP_4JING){
+							//push '####'.
 							break;
 						}
-						//压'#####'
 						else if(se_add.type==ELEMENTTYPE_OP_5JING){
+							//push '#####'.
 							break;
 						}
-						//压'######'
 						else if(se_add.type==ELEMENTTYPE_OP_6JING){
+							//push '######'.
 							break;
 						}
-						//压'\n'
 						else if(se_add.type==ELEMENTTYPE_OP_BR){
+							//push '\n'.
 							if(se_top==null){
-								//直接输入了一行换行符，无视
+								//ignore the '\n' at the very beginning.
 								break;
 							}
 							if(se_top.type==ELEMENTTYPE_TEXT){
@@ -1046,75 +1041,68 @@ public class M2HTranslator {
 								se_add=new StackElement(ELEMENTTYPE_TEXT,newtext);
 								magic_stack.push(se_add);
 								break;
-							}
-							//其他一律情况都要无视
-							else{
+							}else{
 								break;
 							}
 						}
-						//压'\t'
 						else if(se_add.type==ELEMENTTYPE_OP_TAB){
-							//直接把'\t'转换成"<blockquote>压进栈中"
+							//push '\t'.
 							if(se_top==null){
+								//'\t'--> <blockquote>
 								se_add=new StackElement(ELEMENTTYPE_TEXT,"<blockquote>");
 								magic_stack.push(se_add);
 								break;
 							}
-							
 							else if(se_top.type==ELEMENTTYPE_TEXT){
 								magic_stack.pop();
 								String newtext=se_top.content+"<blockquote>";
 								se_add=new StackElement(ELEMENTTYPE_TEXT,newtext);
 								magic_stack.push(se_add);
 								break;
-							}
-							else{
+							}else{
 								break;
 							}
-						}
-						//其余情况就无视吧
-						else{
+						}else{
 							break;
 						}
 					}
-						
 					lineindex++;
 				}
 					
 				/*
-				 * 清理magic_stack，出行结果
+				 * Second.
+				 * pop magic_stack,and combine the all the stack elements.
 				 * 
 				 */
-				//从magic_stack中将行字符串取出来
-				String stackstring="";	//从栈中取出的加工过一次的文本
-				String stackendstring="";	//例如</h1>这种结尾控制文本
-				//从栈底开始自底向上取出每个StackElement
+				//String got from the magic_stack.
+				String stackstring="";
+				//such as </h1>.
+				String stackendstring="";	
+				//iterate over the magic_stack from bottom to top.
 				ListIterator<StackElement> listiter=magic_stack.listIterator(
 						magic_stack.size());
-				boolean flag_isstackbottom=true;	//标志是否是栈底
 				while(listiter.hasPrevious()){
 					StackElement se_get=listiter.previous();
-					String content_get=se_get.content;	//文本内容
+					//the content of the stack element.
+					String content_get=se_get.content;
+					//the type of the stack element.
 					int type_get=se_get.type;
-					//是空白元素，那必然处于文本开头，去掉
 					if(type_get==ELEMENTTYPE_SPACE||type_get==ELEMENTTYPE_OP_2STAR||
 							type_get==ELEMENTTYPE_OP_2SB){
+						//ignore the SPACE at very beginning of the line text.
+						//the ** and __ will be ignored.
 						continue;
 					}
-					//关于井号的处理需要注意一个问题
-					//例如文本：#####回车
-					//则需要转换成<h4>#</h4>
-					//如果###后有文本，则无需减1
 					else if(type_get==ELEMENTTYPE_OP_JING){
-						//文本行就一个#
 						if(magic_stack.size()==1){
+							//'#' is a text sequence.
 							stackstring="#";
 						}else{
+							//'#' is the title-format sequence.
 							stackstring+="<h1>";
 							stackendstring="</h1>"+stackendstring;
 						}
 					}else if(type_get==ELEMENTTYPE_OP_2JING){
-						//文本行就一个##
 						if(magic_stack.size()==1){
 							stackstring="<h1>#</h1>";
 						}else{
@@ -1154,19 +1142,18 @@ public class M2HTranslator {
 					}else{
 						stackstring+=content_get;
 					}
-					flag_isstackbottom=false;	//栈底已经处理过了，下一个元素不是栈底
 				}
 				
 				/*
-				 * 此处处理所有`````,转换成<code>
+				 * deal with the `````,and translate them into <code>.
 				 */
 				Matcher matcher_code_out=pattern_code_greedy.matcher(stackstring);
-				//贪婪型匹配
+				//Greedy match.
 				if(matcher_code_out.find()){
 					String string_code_out=matcher_code_out.group();
 					int start_out=matcher_code_out.start();
 					int end_out=matcher_code_out.end();
-					//勉强型匹配
+					//Reluctance match.
 					Matcher matcher_code_in=pattern_code_scared.matcher(string_code_out);
 					int find_index=0;
 					H2EntityTranslater h2ttranlater=new H2EntityTranslater();
@@ -1174,11 +1161,10 @@ public class M2HTranslator {
 						String string_code_in=matcher_code_in.group();
 						int start_in=matcher_code_in.start();
 						int end_in=matcher_code_in.end();
-						//System.out.println("code p:"+string_code_in);
-						//string_code_in是一块代码段:start_in~end_in
-						//可能``````xxx``
-						//也可能``xxxxx`````
-						//也可能`````
+						//string_code_in is a code segment:start_in~end_in
+						//maybe: ``````xxx``
+						//or: xxxxx`````
+						//or: `````
 						if(pattern_code_op.matcher(string_code_in).matches()){
 							continue;
 						}
@@ -1203,8 +1189,6 @@ public class M2HTranslator {
 								string_code_in=string_code_out.substring(start,end+1);
 								h2ttranlater.loadString(string_code_in);
 								string_code_in="<code>"+h2ttranlater.translate()+"</code>";
-							}else{
-								//不变化
 							}
 						}
 						else if(string_code_out.charAt(end)!='`'){
@@ -1218,18 +1202,22 @@ public class M2HTranslator {
 						matcher_code_in=pattern_code_scared.matcher(string_code_out);
 						find_index=end_in;
 					}
-					//string_code_out是替换过<code>的串，应当替换回stackstring中
+					/*
+					 * string_code_out is the translated <code> segment,
+					 * it should be put back to the stackstring and replace 
+					 * the origin string.
+					 */
 					stackstring=StringUtils.replace(stackstring, string_code_out, start_out, end_out-1);
 					
 				}
 					
 				/*
-				 * 此处需要分析行中的pattern_image,pattern_weburl
-				 * 并且转换成html标签
+				 * parse pattern_image,pattern_weburl,
+				 * and translate them.
 				 * 
-				 * 注意，一定要先image，后weburl
+				 * note:first image,then weburl.
 				 */
-				//处理image格式的
+				//deal with image.
 				int find_index=0;
 				Matcher matcher=pattern_image.matcher(stackstring);
 				while(matcher.find(find_index)){
@@ -1453,14 +1441,19 @@ public class M2HTranslator {
 				linetext.content=stackstring;	//将文本替换成magic_stack中生加工过的
 			}
 			
-			
-			//如果当前文本行是- - -- --
 			else if(linetext.type==TEXTTYPE_SBLINE_DISCONTINUOUS||
 					linetext.type==TEXTTYPE_STARLINE){
+				//"- - -- --" -> <hr>
 				linetext.content="<hr>";
 			}
 		}
 		
+		/*
+		 * now the all the LineText in mLineString has been translated.
+		 * we should just iterate over them and combine them to the 
+		 * final String now.
+		 * 
+		 */
 		Iterator<LineText> iter=mLineString.iterator();
 		StringBuilder html_stringbuilder=new StringBuilder();
 		while(iter.hasNext()){
