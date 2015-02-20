@@ -4,7 +4,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /*
- * xxx  "xxx"的单元,weburl,image格式的组成部分
+ * xxx  "xxx"
+ * part of the weburl and the image.
  */
 public class PathTitleUnit {
 
@@ -23,16 +24,16 @@ public class PathTitleUnit {
 		this.mTitle=title;
 	}
 	
-	//传进来一个xxx  "xxxx"
+	//get a String (xxx  "xxxx").
 	public PathTitleUnit(String origin){
 		if(isPathTitleUnit(origin)){
 			Matcher matcher_nospace=pattern_string_nospace.matcher(origin);
 			Matcher matcher_quot=pattern_string_quot.matcher(origin);
-			//找第一个匹配成功的nospace作为mPath
+			//the first no space sequence as mPath.
 			if(matcher_nospace.find()){
 				mPath=matcher_nospace.group();
 			}
-			//找最后一个匹配成功的quot
+			//the last quotation sequence as the mTitle.
 			while(matcher_quot.find()){
 				mTitle=matcher_quot.group();
 				mTitle=mTitle.substring(1, mTitle.length()-1);
@@ -44,7 +45,7 @@ public class PathTitleUnit {
 		
 	}
 	
-	//判断一个字符串是否是pathtitle类型的
+	//judge if a String is the type of pathtitle
 	public static boolean isPathTitleUnit(String string){
 		Matcher matcher_pt=pattern_path_title.matcher(string);
 		if(matcher_pt.matches()){

@@ -6,13 +6,13 @@ import java.io.FileWriter;
 import java.io.IOException;
 
 /*
- * 专门生成html文件
+ * class to generate html file.
  */
 public class HtmlGenerator {
 	
-	private String head;	//<body>以上的部分
-	private String foot;	//</body>以下的部分
-	private String body;	//<body></body>中间的部分
+	private String head;	//text before <body>.
+	private String foot;	//text after </body>.
+	private String body;	//text between <body> and </body>.
 	
 	public HtmlGenerator(){
 		head="<!DOCTYPE html>\n<html><head>\n<meta http-equiv=\"Content-"
@@ -22,13 +22,19 @@ public class HtmlGenerator {
 		body="<body></body>";
 	}
 	
-	//将html文件写到dir指定的路径下
+	/**
+	 * write the html file to dir/filename.
+	 * @param dir
+	 * @param filename
+	 * @param mode
+	 * @return
+	 */
 	public boolean writeFile(String dir,String filename,int mode){
 		File path=new File(dir);
-		//文件路径已经存在的情况下，才能创建文件
 		if(path.exists()&&path.isDirectory()){
+			//the path exists.
+			//new a file using the filename at the path.
 			File file=new File(dir+filename);
-			
 			if(file.exists()){
 				BufferedWriter bw=null;
 				try {
@@ -75,12 +81,18 @@ public class HtmlGenerator {
 		return true;
 	}
 	
-	//获取html文件的内容
+	/**
+	 * get the content of the html.
+	 * @return content
+	 */
 	public String getFileContent(){
 		return head+body+foot;
 	}
 	
-	//设置html文件的body
+	/**
+	 * set the html body.
+	 * @param content
+	 */
 	public void setHtmlBody(String content){
 		this.body="<body>"+content+"</body>";
 	}

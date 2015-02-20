@@ -3,12 +3,12 @@ package com.liushenming.mrdeer.translatemodule;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 /*
- * 将Html代码片段中所有的HTMl符号转换成HTML实体
+ * Translate Html String to HTMl Entity String.
  */
 
 public class H2EntityTranslater {
 	
-	//传入的字符串
+	//the original String.
 	private String string_origin="";
 	private LinkedHashSet<EntityRule> ruleSet;
 	
@@ -42,7 +42,7 @@ public class H2EntityTranslater {
 	}
 
 	/**
-	 * 转换方法，返回转换为html实体的String
+	 * the core method,translate the html String to html entity.
 	 * @return
 	 */
 	public String translate(){
@@ -56,6 +56,10 @@ public class H2EntityTranslater {
 		return string_origin;		
 	}
 	
+	/**
+	 * load a new String.
+	 * @param string
+	 */
 	public void loadString(String string){
 		if(string!=null){
 			string_origin=new String(string);

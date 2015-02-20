@@ -7,13 +7,14 @@ import java.io.IOException;
 public class StringUtils {
 
 	/**
-	 * 从一个String中剔除start-end的一段字符串
+	 * eliminate a sequence from start to end from String.
 	 * for example:
 	 * StringUtils.eliminate("abcdefg",1,3): return "aefg"
-	 * @param string:需要处理的字符串
-	 * @param start:要剔除部分的起始下标
-	 * @param end:要剔除部分的结束下标
-	 * @return 剔除后的字符串
+	 * 
+	 * @param string:String to be dealt with.
+	 * @param start:the start index to eliminate.
+	 * @param end:the end index to eliminate.
+	 * @return the new String after eliminate.
 	 */
 	public static String eliminate(String string,int start,int end)
 	{
@@ -38,11 +39,12 @@ public class StringUtils {
 	}
 	
 	/**
-	 * 剪接字符串，先剪开，再插入，再拼接
+	 * add string_piece to string_board at the start index of string_board.
 	 * for example: StringUtils.motage("abc","kk",1) :return "akkbc"
-	 * @param string_board:拼接在该字符串上
-	 * @param string_piece:这是要拼的碎片
-	 * @param start:在board的该处插入piece
+	 * 
+	 * @param string_board:the board string.
+	 * @param string_piece:the string to be added.
+	 * @param start:the index to add in the string_board.
 	 * @return
 	 */
 	public static String montage(String string_board,String string_piece,
@@ -59,7 +61,7 @@ public class StringUtils {
 	}
 	
 	/**
-	 * 将board中start-end的文本替换成piece
+	 * replace the sequence from start to end in string_board by string_piece.
 	 * @param string_board
 	 * @param string_piece
 	 * @param start
@@ -69,15 +71,13 @@ public class StringUtils {
 	public static String replace(String string_board,String string_piece,
 			int start,int end)
 	{
-		//先剔除
 		string_board=eliminate(string_board,start,end);
-		//再剪接
 		string_board=montage(string_board, string_piece, start);
 		return string_board;
 	}
 	
 	/**
-	 * 从指定的path中的文件中读取String
+	 * get String from the specified path.
 	 */
 	public static String getStringFromFile(String path) throws IOException{
 		BufferedReader br=new BufferedReader(new FileReader(path));

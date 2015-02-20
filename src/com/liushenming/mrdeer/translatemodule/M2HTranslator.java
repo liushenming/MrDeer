@@ -1224,7 +1224,7 @@ public class M2HTranslator {
 					int start_index=matcher.start();
 					int end_index=matcher.end();
 					String imagestring=matcher.group();	//这是stackstring中找到的目标串
-					//分析imagestring，转换成标签格式
+					//parse the imagestring.
 					Matcher sqbrackets_matcher=pattern_squarebracket.
 						matcher(imagestring);
 					Matcher brackets_matcher=pattern_bracket.
@@ -1246,7 +1246,7 @@ public class M2HTranslator {
 					}
 					imagestring="<img src=\""+img_path+"\" alt=\""+
 							img_alt +"\" title=\"" + img_title + "\" />";
-					//剔除了对应位置的字符串
+					//replace the original string by translated String. 
 					stackstring=StringUtils.replace(stackstring,imagestring,
 							start_index,end_index-1);
 					find_index=start_index+imagestring.length();
@@ -1258,41 +1258,42 @@ public class M2HTranslator {
 				while(matcher.find()){
 					int start_index=matcher.start();
 					int end_index=matcher.end();
-					String urlstring=matcher.group();	//这是stackstring中找到的目标串
-					//分析urlstring，转换成标签格式
+					String urlstring=matcher.group();
+					//parse the urlstring.
 					Matcher sqbrackets_matcher=pattern_squarebracket.
 							matcher(urlstring);
 					Matcher brackets_matcher=pattern_bracket.
 							matcher(urlstring);
-					String url_path="";	//实际上的链接路径
-					String url_title="";	//url的title
-					String url_display="";	//显示的链接名称
-					//找到了方括号内容，即为显示出来的链接文字
+					String url_path="";	
+					String url_title="";	
+					String url_display="";	
+					//get the [].
 					if(sqbrackets_matcher.find()){
 						url_display=sqbrackets_matcher.group();
 						url_display=url_display.substring(1,
 								url_display.length()-1);
 					}
-					//找到了圆括号的内容
-					//需要判断是xxx格式还是xxx "xxx"格式
+					//get the ().
 					if(brackets_matcher.find()){
 						url_path=brackets_matcher.group();
 						url_path=url_path.substring(1,
 								url_path.length()-1);
-						//建立一个PathTitleUnit类对象
+						//create a PathTitleUnit object.
 						PathTitleUnit ptu=new PathTitleUnit(url_path);
 						url_path=ptu.getPath();
 						url_title=ptu.getTitle();
 						
 					}
 					if("".equals(url_title)){
+						//weburl without title.
 						urlstring="<a href=\"" + url_path + "\">"
 								+ url_display + "</a>";
 					}else{
+						//weburl with title.
 						urlstring="<a href=\"" + url_path + "\" title=\"" + 
 								url_title+"\">" + url_display + "</a>";
 					}
-					//剔除了对应位置的字符串
+					//replace the original string by translated String. 
 					stackstring=StringUtils.replace(stackstring,urlstring,
 							start_index,end_index-1);
 					find_index=start_index+urlstring.length();
@@ -1369,19 +1370,23 @@ public class M2HTranslator {
 						url_string="<a href=\"" + url_path + "\" title=\"" + 
 								url_title+"\">" + url_display + "</a>";
 					}
-					//剔除了对应位置的字符串
-					
+					//replace the original string by translated String. 
 					stackstring=StringUtils.replace(stackstring,url_string,
 							start_index,end_index-1);
 					find_index=start_index+url_string.length();
 					matcher=pattern_squarebracket2.matcher(stackstring);
 				}
 									
-				stackstring=stackstring+stackendstring;	//拼接上</..></..>
+				/*
+				 * combine the stackstring and the stackendstring. 
+				 * <..><..>..</..></..>
+				 * 
+				 */
+				stackstring=stackstring+stackendstring;	
 				if(linetext.type==TEXTTYPE_NORMAL){
 					stackstring="<p>"+stackstring+"</p>";
 					if(linetext.isblockquote_end){
-						//把引用深度的结束标签添上
+						//add specified number(blockquote_depth) of </blockquote>. 
 						for(int i=0;i<linetext.blockquote_depth;i++){
 							stackstring+="</blockquote>";
 						}
@@ -1389,7 +1394,7 @@ public class M2HTranslator {
 				}else if(linetext.type==TEXTTYPE_ENDNORMALTEXT){
 					stackstring="<p>"+stackstring+"<br/></p>";
 					if(linetext.isblockquote_end){
-						//把引用深度的结束标签添上
+						//add specified number(blockquote_depth) of </blockquote>.
 						for(int i=0;i<linetext.blockquote_depth;i++){
 							stackstring+="</blockquote>";
 						}
@@ -1400,22 +1405,22 @@ public class M2HTranslator {
 				}
 				else if(linetext.type==TEXTTYPE_TITLE_JING){
 					if(linetext.isblockquote_end){
-					//把引用深度的结束标签添上
+						//add specified number(blockquote_depth) of </blockquote>.
 					for(int i=0;i<linetext.blockquote_depth;i++){
 						stackstring+="</blockquote>";
 						}
 					}
 				}else if(linetext.type==TEXTTYPE_LIST){
 					stackstring="<li>"+stackstring+"</li>";
-					//加上列表头：
 					if(linetext.islist_head){
+						//add head of list.
 						if(linetext.islist_order){
 							stackstring="<ol>"+stackstring;
 						}else{
 							stackstring="<ul>"+stackstring;
 						}
 					}
-					//加上列表尾
+					//add tail of list.
 					for(int i=0;i<linetext.list_tailnum;i++){
 						if(linetext.list_tailstack!=null){
 							while(!linetext.list_tailstack.isEmpty()){
@@ -1437,8 +1442,8 @@ public class M2HTranslator {
 				if(VDBG){
 					System.out.println("stackstring:"+stackstring);
 				}
-				//再放置回al_LineString
-				linetext.content=stackstring;	//将文本替换成magic_stack中生加工过的
+				//let the linetext.content refer to the stackstring.
+				linetext.content=stackstring;
 			}
 			
 			else if(linetext.type==TEXTTYPE_SBLINE_DISCONTINUOUS||
@@ -1463,7 +1468,10 @@ public class M2HTranslator {
 		return html_stringbuilder.toString();
 	}
 	
-	//为转换器重新加载一个要转换的html String
+	/**
+	 * load a new String
+	 * @param string
+	 */
 	public void loadString(String string){
 		if(string==null){
 			this.origin_string="";
@@ -1473,7 +1481,7 @@ public class M2HTranslator {
 		}
 	}
 	
-	//打印出每一行的文本内容和文本类型
+	//print the mLineString
 	private void printLineStrings(){
 		if(this.mLineString!=null){
 			Iterator<LineText> iter=mLineString.iterator();
