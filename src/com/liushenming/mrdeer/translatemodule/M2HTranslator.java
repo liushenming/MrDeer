@@ -27,9 +27,44 @@ public class M2HTranslator {
 	//mReferDefineMap stores all the (Reference Define) information into Map<id,(path,title)>
 	private HashMap<String,PathTitleUnit> mReferDefineMap;
 	
+	/*
+	 * DBG is used to print the main information(such as input,output).
+	 * VDBG is used to print the assistant information(such as Collections). 
+	 * VVDBG is used to print the detailed information(such as items in loop).
+	 * 
+	 */
 	public boolean DBG=false;
 	public boolean VDBG=false;
 	public boolean VVDBG=true;
+	
+	/**
+	 * use to open/close the Log.
+	 * @param dbg
+	 * for example:
+	 * dbg=0,f,f,f
+	 * dbg=1,t,f,f
+	 * dbg=2,t,t,f
+	 * dbg=3,t,t,t
+	 */
+	public void enableVerboseLog(int dbg){
+		if(dbg<=0){
+			DBG=false;
+			VDBG=false;
+			VVDBG=false;
+		}else if(dbg<2){
+			DBG=true;
+			VDBG=false;
+			VVDBG=false;
+		}else if(dbg<3){
+			DBG=true;
+			VDBG=true;
+			VVDBG=false;
+		}else{
+			DBG=true;
+			VDBG=true;
+			VVDBG=true;
+		}
+	}
 	
 	/*
 	 * below are the text types of String stored in mLineString 
@@ -397,7 +432,7 @@ public class M2HTranslator {
 		if(string!=null){
 			//new a String.
 			this.origin_string=new String(string);	
-			if(VVDBG){
+			if(DBG){
 				System.out.println("M2HTranslater(String string),origin_string=="+origin_string);
 			}
 		}
@@ -574,10 +609,10 @@ public class M2HTranslator {
 					}
 				}
 			}
-			if(VVDBG){
-				System.out.println("第2次扫描以后:");
+			if(VDBG){
+				System.out.println("after SCAN#2,the mLineString:");
 				printLineStrings();
-				printStack_tail();
+				printListTail();
 			}
 			
 			
@@ -684,7 +719,7 @@ public class M2HTranslator {
 				}
 			}
 			if(VVDBG){
-				System.out.println("第三次扫描以后，the al_LineString:");
+				System.out.println("after SCAN#3,the mLineString:");
 				printLineStrings();
 			}
 			return true;
@@ -1433,7 +1468,7 @@ public class M2HTranslator {
 					stackstring="<code>"+h2etranslater.translate()+"</code>";
 				}
 					
-				if(VDBG){
+				if(VVDBG){
 					System.out.println("stackstring:"+stackstring);
 				}
 				//let the linetext.content refer to the stackstring.
@@ -1490,6 +1525,7 @@ public class M2HTranslator {
 		}
 	}
 
+	//print the Reference Define in the mReferDifineMap.
 	private void printReferDefine(){
 		if(mReferDefineMap!=null){
 			Set<String> set=mReferDefineMap.keySet();
@@ -1503,7 +1539,8 @@ public class M2HTranslator {
 		}
 	}
 	
-	private void printStack_tail(){
+	//print the information about the mListTail.
+	private void printListTail(){
 		System.out.println(mListTail);
 	}
 }
