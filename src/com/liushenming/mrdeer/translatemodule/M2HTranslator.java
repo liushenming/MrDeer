@@ -486,7 +486,7 @@ public class M2HTranslator {
 						lt_curr.islist_head=true;
 						lt_curr.list_tailnum=lt_curr.list_len;
 						lt_curr.list_tailstack=new LinkedList<Boolean>();
-						mListTail.push(lt_curr.islist_order);
+						//mListTail.push(lt_curr.islist_order);
 						/*
 						 * move the element from mListTail to lt_curr.list_tailstack
 						 * and the orders of the element are same.
@@ -553,11 +553,6 @@ public class M2HTranslator {
 				}
 				if(lt_curr.type==TEXTTYPE_LIST&&lt_next.type==TEXTTYPE_LIST){
 					//the current line and the next line are all lists.
-					if(i==0){
-						lt_curr.islist_head=true;
-						lt_curr.list_len=1;
-						mListTail.push(lt_curr.islist_order);
-					}
 					if(lt_next.list_len>lt_curr.list_len){
 						lt_next.list_len=lt_curr.list_len+1;
 						lt_next.islist_head=true;
@@ -574,7 +569,6 @@ public class M2HTranslator {
 					//we are now at the tail of a list.
 					lt_curr.list_tailnum=lt_curr.list_len;
 					lt_curr.list_tailstack=new LinkedList<Boolean>();
-					mListTail.push(lt_curr.islist_order);
 					for(int j=0;j<lt_curr.list_tailnum;j++){
 						lt_curr.list_tailstack.addLast(mListTail.pop());		
 					}
