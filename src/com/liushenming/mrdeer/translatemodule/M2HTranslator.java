@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.ListIterator;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -1542,5 +1543,12 @@ public class M2HTranslator {
 	//print the information about the mListTail.
 	private void printListTail(){
 		System.out.println(mListTail);
+	}
+	
+	/**
+	 * return all the title-strings in a List
+	 */
+	public List<String> getTitles(){
+		return null;
 	}
 }
