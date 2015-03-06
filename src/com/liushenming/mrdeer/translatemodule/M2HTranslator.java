@@ -1551,4 +1551,8 @@ public class M2HTranslator {
 	public List<String> getTitles(){
 		return null;
 	}
+	
+	public String getTitle(int index){
+		return null;
+	}
 }
