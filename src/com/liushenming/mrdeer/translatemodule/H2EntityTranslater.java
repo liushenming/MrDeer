@@ -2,8 +2,9 @@ package com.liushenming.mrdeer.translatemodule;
 
 import java.util.Iterator;
 import java.util.LinkedHashSet;
-/*
+/**
  * Translate Html String to HTMl Entity String.
+ * @author liushenming
  */
 
 public class H2EntityTranslater {

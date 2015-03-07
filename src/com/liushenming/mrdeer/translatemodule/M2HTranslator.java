@@ -11,8 +11,9 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/*
+/**
  * Translator that translate MarkDown(.md) into HTML(.html)
+ * @author liushenming
  */
 public class M2HTranslator {
 
@@ -29,6 +30,9 @@ public class M2HTranslator {
 	private HashMap<String,PathTitleUnit> mReferDefineMap;
 	//mTitles stores all the titles
 	private List<String> mTitles;	
+	private HtmlParser mHtmlParser;
+	private boolean isTranslated=false;
+	private String html_string="";
 	
 	
 	/*
@@ -510,8 +514,10 @@ public class M2HTranslator {
 
 			/*
 			 * SCAN#2:
-			 * remove the extra space lines and all the title-format lines.
+			 * 1.remove the extra space lines and all the title-format lines.
 			 * (      ,====,-----)
+			 * 
+			 * 2.do some prepare work for SCAN#3 and magic_stack.
 			 */
 			for(int i=0;i<mLineString.size();i++){
 				//the current LineText
@@ -1500,7 +1506,10 @@ public class M2HTranslator {
 			LineText lt_get=iter.next();
 			html_stringbuilder.append(lt_get.content+"\n");
 		}
-		return html_stringbuilder.toString();
+		isTranslated=true;
+		html_string=html_stringbuilder.toString();
+		mHtmlParser=new HtmlParser(html_string);
+		return html_string;
 	}
 	
 	/**
@@ -1514,6 +1523,14 @@ public class M2HTranslator {
 		else{
 			this.origin_string=new String(htmlstring);
 		}
+		//reset all containers.
+		mLineString.clear();
+		mListTail.clear();
+		mReferDefineMap.clear();
+		mTitles.clear();
+		isTranslated=false;
+		html_string="";
+		mHtmlParser=null;
 	}
 	
 	//print the mLineString
@@ -1554,19 +1571,9 @@ public class M2HTranslator {
 	 * return all the title-strings in a List
 	 */
 	public List<String> getTitles(){
-		return mTitles;
-	}
-	
-	/**
-	 * return title from mTitles at index.
-	 * @param index
-	 * @return
-	 */
-	public String getTitle(int index){
-		if(index>=0&&index<mTitles.size()){
-			return mTitles.get(index);
-		}else{
-			return "";
+		if(isTranslated&&mHtmlParser!=null){
+			return mHtmlParser.geth();
 		}
+		return null;
 	}
 }

@@ -5,8 +5,9 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
-/*
+/**
  * class to generate html file.
+ * @author liushenming
  */
 public class HtmlGenerator {
 	

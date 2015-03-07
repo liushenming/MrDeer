@@ -3,9 +3,10 @@ package com.liushenming.mrdeer.translatemodule;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/*
+/**
  * xxx  "xxx"
  * part of the weburl and the image.
+ * @author liushenming
  */
 public class PathTitleUnit {
 
