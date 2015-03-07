@@ -27,6 +27,9 @@ public class M2HTranslator {
 	private HashSet<Character> mEscapeCharSet;
 	//mReferDefineMap stores all the (Reference Define) information into Map<id,(path,title)>
 	private HashMap<String,PathTitleUnit> mReferDefineMap;
+	//mTitles stores all the titles
+	private List<String> mTitles;	
+	
 	
 	/*
 	 * DBG is used to print the main information(such as input,output).
@@ -429,10 +432,10 @@ public class M2HTranslator {
 	}
 	
 	//the constructor of the M2HTranslator
-	public M2HTranslator(String string){
-		if(string!=null){
+	public M2HTranslator(String htmlstring){
+		if(htmlstring!=null){
 			//new a String.
-			this.origin_string=new String(string);	
+			this.origin_string=new String(htmlstring);	
 			if(DBG){
 				System.out.println("M2HTranslater(String string),origin_string=="+origin_string);
 			}
@@ -440,6 +443,8 @@ public class M2HTranslator {
 		else{
 			this.origin_string="";	
 		}
+		
+		mTitles=new ArrayList<String>();
 		mListTail=new LinkedList<Boolean>();
 		mReferDefineMap=new HashMap<String,PathTitleUnit>();
 		//add all the escape chars into the mEscpaeCharSet.
@@ -1502,12 +1507,12 @@ public class M2HTranslator {
 	 * load a new String
 	 * @param string
 	 */
-	public void loadString(String string){
-		if(string==null){
+	public void loadString(String htmlstring){
+		if(htmlstring==null){
 			this.origin_string="";
 		}
 		else{
-			this.origin_string=new String(string);
+			this.origin_string=new String(htmlstring);
 		}
 	}
 	
@@ -1549,10 +1554,19 @@ public class M2HTranslator {
 	 * return all the title-strings in a List
 	 */
 	public List<String> getTitles(){
-		return null;
+		return mTitles;
 	}
 	
+	/**
+	 * return title from mTitles at index.
+	 * @param index
+	 * @return
+	 */
 	public String getTitle(int index){
-		return null;
+		if(index>=0&&index<mTitles.size()){
+			return mTitles.get(index);
+		}else{
+			return "";
+		}
 	}
 }
