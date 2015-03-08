@@ -42,7 +42,7 @@ public class M2HTranslator {
 	 * 
 	 */
 	public boolean DBG=false;
-	public boolean VDBG=false;
+	public boolean VDBG=true;
 	public boolean VVDBG=true;
 	
 	/**
@@ -622,7 +622,7 @@ public class M2HTranslator {
 				}
 			}
 			if(VDBG){
-				System.out.println("after SCAN#2,the mLineString:");
+				System.err.println("after SCAN#2,the mLineString:");
 				printLineStrings();
 				printListTail();
 			}
@@ -731,7 +731,7 @@ public class M2HTranslator {
 				}
 			}
 			if(VVDBG){
-				System.out.println("after SCAN#3,the mLineString:");
+				System.err.println("after SCAN#3,the mLineString:");
 				printLineStrings();
 			}
 			return true;
@@ -956,6 +956,8 @@ public class M2HTranslator {
 							if(se_top.type==ELEMENTTYPE_OP_STAR){
 								magic_stack.pop();
 								se_add=new StackElement(ELEMENTTYPE_OP_2STAR, "**");
+								//magic_stack.push(se_add);
+								//break;
 								se_top=magic_stack.peek();
 								continue;
 							}else if(se_top.type==ELEMENTTYPE_TEXT&&magic_stack.size()>=2&&
@@ -964,8 +966,10 @@ public class M2HTranslator {
 								magic_stack.pop();
 								String newtext="<em>"+se_top.content+"</em>";
 								se_add=new StackElement(ELEMENTTYPE_TEXT,newtext);
-								se_top=magic_stack.peek();
-								continue;
+								magic_stack.push(se_add);
+								//se_top=magic_stack.peek();
+								//continue;
+								break;
 							}else{
 								magic_stack.push(se_add);
 								break;
@@ -984,10 +988,13 @@ public class M2HTranslator {
 								magic_stack.pop();
 								String newtext="<strong>"+se_top.content+"</strong>";
 								se_add=new StackElement(ELEMENTTYPE_TEXT,newtext);
-								se_top=magic_stack.peek();
-								continue;
+								magic_stack.push(se_add);
+								break;
+								//se_top=magic_stack.peek();
+								//continue;
 							}else{
-								magic_stack.add(se_add);
+								magic_stack.push(se_add);
+								break;
 							}
 						}
 						else if(se_add.type==ELEMENTTYPE_OP_JING){
@@ -1122,6 +1129,9 @@ public class M2HTranslator {
 				//iterate over the magic_stack from bottom to top.
 				ListIterator<StackElement> listiter=magic_stack.listIterator(
 						magic_stack.size());
+				//the start index of a title-String
+				int title_start_index=0;	
+				int title_end_index=0;	
 				while(listiter.hasPrevious()){
 					StackElement se_get=listiter.previous();
 					//the content of the stack element.
@@ -1141,48 +1151,66 @@ public class M2HTranslator {
 						}else{
 							//'#' is the title-format sequence.
 							stackstring+="<h1>";
+							title_start_index=stackstring.length();
 							stackendstring="</h1>"+stackendstring;
 						}
 					}else if(type_get==ELEMENTTYPE_OP_2JING){
 						if(magic_stack.size()==1){
 							stackstring="<h1>#</h1>";
+							mTitles.add("#");
 						}else{
 							stackstring+="<h2>";
+							title_start_index=stackstring.length();
 							stackendstring="</h2>"+stackendstring;
 						}
 					}else if(type_get==ELEMENTTYPE_OP_3JING){
 						if(magic_stack.size()==1){
 							stackstring="<h2>#</h2>";
+							mTitles.add("#");
 						}else{
 							stackstring+="<h3>";
+							title_start_index=stackstring.length();
 							stackendstring="</h3>"+stackendstring;
 						}
 					}else if(type_get==ELEMENTTYPE_OP_4JING){
 						if(magic_stack.size()==1){
 							stackstring="<h3>#</h3>";
+							mTitles.add("#");
 						}else{
 							stackstring+="<h4>";
+							title_start_index=stackstring.length();
 							stackendstring="</h4>"+stackendstring;
 						}
 					}else if(type_get==ELEMENTTYPE_OP_5JING){
 						if(magic_stack.size()==1){
 							stackstring="<h4>#</h4>";
+							mTitles.add("#");
 						}else{
 							stackstring+="<h5>";
+							title_start_index=stackstring.length();
 							stackendstring="</h5>"+stackendstring;
 						}
 					}else if(type_get==ELEMENTTYPE_OP_6JING){
 						if(magic_stack.size()==1){
 							stackstring="<h5>#</h5>";
+							mTitles.add("#");
 						}else{
 							stackstring+="<h6>";
+							title_start_index=stackstring.length();
 							stackendstring="</h6>"+stackendstring;
 						}
 					}else if(type_get==ELEMENTTYPE_TEXT){
 						stackstring+=content_get;
-					}else{
+						title_end_index=stackstring.length();
+					}//else if(type_get==ELEMENTTYPE_)
+					else{
 						stackstring+=content_get;
+						title_end_index=stackstring.length();
 					}
+				}
+				//now get the title from stackstring in [title_start_index]
+				if(title_start_index<stackstring.length()){
+					mTitles.add(stackstring.substring(title_start_index, title_end_index));
 				}
 				
 				/*
@@ -1442,6 +1470,7 @@ public class M2HTranslator {
 					}
 				}
 				else if(linetext.type==TEXTTYPE_TITLE_EQUAL){
+					mTitles.add(stackstring);
 					stackstring="<h1>"+stackstring+"</h1>";
 				}
 				else if(linetext.type==TEXTTYPE_TITLE_JING){
@@ -1571,8 +1600,8 @@ public class M2HTranslator {
 	 * return all the title-strings in a List
 	 */
 	public List<String> getTitles(){
-		if(isTranslated&&mHtmlParser!=null){
-			return mHtmlParser.geth();
+		if(isTranslated&&mTitles!=null){
+			return mTitles;
 		}
 		return null;
 	}

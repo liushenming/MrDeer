@@ -1,6 +1,7 @@
 package com.liushenming.mrdeer.translatemodule;
 
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * 
@@ -11,6 +12,8 @@ import java.util.List;
 public class HtmlParser {
 
 	private String htmlstring="";
+	
+	private final static Pattern PATTERN_H=Pattern.compile("<h[1-6]>(.+)?<//h[1-6]>");
 	
 	public HtmlParser(String hstring){
 		this.htmlstring=hstring;
